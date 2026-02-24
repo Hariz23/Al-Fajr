@@ -34,7 +34,7 @@ class _MainDashboardState extends State<MainDashboard> {
       const QuranScreen(),
       const QiblahScreen(),
       const CalendarScreen(),
-      const SettingsScreen(), 
+      const SettingsScreen(),
     ];
 
     return Scaffold(
