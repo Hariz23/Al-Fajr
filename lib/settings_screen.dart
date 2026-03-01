@@ -13,7 +13,6 @@ class SettingsScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // Access the language state
     final lang = Provider.of<LanguageProvider>(context);
 
     return Scaffold(
@@ -25,34 +24,27 @@ class SettingsScreen extends StatelessWidget {
       body: ListView(
         padding: const EdgeInsets.symmetric(vertical: 20),
         children: [
-          // LANGUAGE TOGGLE SWITCH
           SwitchListTile(
             secondary: const Icon(Icons.language, color: AppTheme.primaryGreen),
             title: Text(lang.getText("Language", "Bahasa")),
             subtitle: Text(lang.isEnglish ? "English" : "Bahasa Melayu"),
             activeColor: AppTheme.primaryGreen,
             value: lang.isEnglish,
-            onChanged: (bool value) {
-              lang.toggleLanguage();
-            },
+            onChanged: (bool value) => lang.toggleLanguage(),
           ),
           const Divider(),
-
-          ListTile(
-            leading: const Icon(Icons.person_outline, color: AppTheme.primaryGreen),
-            title: Text(lang.getText("Account Profile", "Profil Akaun")),
-            onTap: () {},
-          ),
-          const Divider(),
-
           ListTile(
             leading: const Icon(Icons.notifications_none, color: AppTheme.primaryGreen),
             title: Text(lang.getText("Prayer Notifications", "Notifikasi Solat")),
             trailing: const Icon(Icons.chevron_right),
-            onTap: () {},
+            onTap: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (context) => const PrayerNotificationDetailScreen()),
+              );
+            },
           ),
           const Divider(),
-
           ListTile(
             leading: const Icon(Icons.logout, color: Colors.redAccent),
             title: Text(
@@ -71,27 +63,55 @@ class SettingsScreen extends StatelessWidget {
       context: context,
       builder: (context) => AlertDialog(
         title: Text(lang.getText("Logout", "Log Keluar")),
-        content: Text(lang.getText(
-          "Are you sure you want to log out?", 
-          "Adakah anda pasti untuk log keluar?"
-        )),
+        content: Text(lang.getText("Are you sure?", "Adakah anda pasti?")),
         actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context), 
-            child: Text(lang.getText("Cancel", "Batal"))
-          ),
+          TextButton(onPressed: () => Navigator.pop(context), child: Text(lang.getText("Cancel", "Batal"))),
           TextButton(
             onPressed: () {
               Navigator.pop(context);
               _logout(context);
             }, 
-            child: Text(
-              lang.getText("Logout", "Log Keluar"), 
-              style: const TextStyle(color: Colors.red)
-            )
+            child: Text(lang.getText("Logout", "Log Keluar"), style: const TextStyle(color: Colors.red))
           ),
         ],
       ),
     );
+  }
+}
+
+class PrayerNotificationDetailScreen extends StatelessWidget {
+  const PrayerNotificationDetailScreen({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    final lang = Provider.of<LanguageProvider>(context);
+    final prayers = lang.prayerNotifications;
+
+    return Scaffold(
+      appBar: AppBar(
+        title: Text(lang.getText("Notification Settings", "Tetapan Notifikasi")),
+        backgroundColor: AppTheme.primaryGreen,
+        foregroundColor: Colors.white,
+      ),
+      body: ListView(
+        children: prayers.keys.map((prayerKey) {
+          return SwitchListTile(
+            activeColor: AppTheme.primaryGreen,
+            title: Text(_getPrayerDisplayName(prayerKey, lang)),
+            value: prayers[prayerKey]!,
+            onChanged: (bool value) {
+              // Now matches the method name in LanguageProvider
+              lang.togglePrayerNotification(prayerKey);
+            },
+          );
+        }).toList(),
+      ),
+    );
+  }
+
+  String _getPrayerDisplayName(String key, LanguageProvider lang) {
+    if (lang.isEnglish) return key;
+    const names = {"Fajr": "Subuh", "Dhuhr": "Zohor", "Asr": "Asar", "Maghrib": "Maghrib", "Isha": "Isyak"};
+    return names[key] ?? key;
   }
 }

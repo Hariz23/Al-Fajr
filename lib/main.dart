@@ -2,19 +2,24 @@ import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_core/firebase_core.dart';
-import 'package:provider/provider.dart'; // Added for state management
+import 'package:provider/provider.dart';
 import 'home_screen.dart';
 import 'login_screen.dart';
 import 'firebase_options.dart';
-import 'language_provider.dart'; // Ensure this path is correct
+import 'language_provider.dart';
+import 'notification_service.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  
+  // 1. Firebase Init
   await Firebase.initializeApp(
     options: DefaultFirebaseOptions.currentPlatform,
   );
 
-  // Wrap the entire app in the Provider
+  // 2. Notification Engine Init
+  await NotificationService().init();
+
   runApp(
     ChangeNotifierProvider(
       create: (_) => LanguageProvider(),
@@ -28,9 +33,11 @@ class MyApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final lang = Provider.of<LanguageProvider>(context);
+
     return MaterialApp(
       debugShowCheckedModeBanner: false,
-      title: 'Masjid Al-Fajr',
+      title: lang.getText('Masjid Al-Fajr', 'Masjid Al-Fajr'),
       theme: ThemeData(
         primarySwatch: Colors.green,
         useMaterial3: true,
@@ -45,7 +52,6 @@ class AuthWrapper extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // We can access language here if needed, but primarily it's for the screens below
     return StreamBuilder<User?>(
       stream: FirebaseAuth.instance.authStateChanges(),
       builder: (context, snapshot) {
@@ -54,7 +60,6 @@ class AuthWrapper extends StatelessWidget {
         }
 
         if (snapshot.hasData) {
-          // User is logged in, check role in Firestore
           return FutureBuilder<DocumentSnapshot>(
             future: FirebaseFirestore.instance
                 .collection('users')
@@ -67,17 +72,14 @@ class AuthWrapper extends StatelessWidget {
               
               bool isAdmin = false;
               if (roleSnapshot.hasData && roleSnapshot.data!.exists) {
-                // Safely check for the role field
                 final data = roleSnapshot.data!.data() as Map<String, dynamic>?;
                 isAdmin = data != null && data['role'] == 'admin';
               }
 
-              // Pass the admin status to the Dashboard
               return MainDashboard(isAdmin: isAdmin);
             },
           );
         }
-        // No user data means show login
         return const LoginScreen();
       },
     );
