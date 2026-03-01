@@ -1,8 +1,10 @@
 import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:flutter_qiblah/flutter_qiblah.dart';
-import 'package:geolocator/geolocator.dart'; // Add this to your pubspec.yaml
+import 'package:geolocator/geolocator.dart';
 import 'package:permission_handler/permission_handler.dart';
+import 'package:provider/provider.dart'; // Added
+import 'language_provider.dart'; // Added
 import 'theme.dart';
 
 class QiblahScreen extends StatefulWidget {
@@ -14,7 +16,7 @@ class QiblahScreen extends StatefulWidget {
 
 class _QiblahScreenState extends State<QiblahScreen> {
   bool _hasPermission = false;
-  Position? _currentPosition; // To store the coordinates
+  Position? _currentPosition;
 
   @override
   void initState() {
@@ -22,7 +24,6 @@ class _QiblahScreenState extends State<QiblahScreen> {
     _checkAndRequestPermission();
   }
 
-  // Math: Haversine Formula
   double _calculateDistance(double lat1, double lon1) {
     const double kaabahLat = 21.4225;
     const double kaabahLon = 39.8262;
@@ -51,7 +52,6 @@ class _QiblahScreenState extends State<QiblahScreen> {
     }
   }
 
-  // Fetch the actual GPS coordinates
   Future<void> _getLocation() async {
     Position position = await Geolocator.getCurrentPosition(
         desiredAccuracy: LocationAccuracy.low);
@@ -63,8 +63,14 @@ class _QiblahScreenState extends State<QiblahScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final lang = Provider.of<LanguageProvider>(context);
+
     return Scaffold(
-      appBar: AppBar(title: const Text("Qiblah Finder")),
+      appBar: AppBar(
+        title: Text(lang.getText("Qiblat Finder", "Pencari Kiblat")),
+        backgroundColor: AppTheme.primaryGreen,
+        foregroundColor: Colors.white,
+      ),
       body: !_hasPermission || _currentPosition == null
           ? const Center(child: CircularProgressIndicator())
           : StreamBuilder(
@@ -75,7 +81,6 @@ class _QiblahScreenState extends State<QiblahScreen> {
                 }
 
                 final direction = snapshot.data!;
-                // Use the position we fetched in _getLocation()
                 final distance = _calculateDistance(
                     _currentPosition!.latitude, _currentPosition!.longitude);
 
@@ -92,7 +97,6 @@ class _QiblahScreenState extends State<QiblahScreen> {
                       ),
                       const SizedBox(height: 30),
                       
-                      // Compass Logic
                       Center(
                         child: SizedBox(
                           height: 250,
@@ -112,7 +116,6 @@ class _QiblahScreenState extends State<QiblahScreen> {
                       
                       const SizedBox(height: 50),
 
-                      // Information Card
                       Container(
                         padding: const EdgeInsets.all(20),
                         margin: const EdgeInsets.symmetric(horizontal: 25),
@@ -123,18 +126,18 @@ class _QiblahScreenState extends State<QiblahScreen> {
                         ),
                         child: Column(
                           children: [
-                            const Row(
+                            Row(
                               mainAxisAlignment: MainAxisAlignment.spaceBetween,
                               children: [
-                                Text("Your Location", style: TextStyle(color: Colors.grey)),
-                                Text("Kuala Lumpur", style: TextStyle(fontWeight: FontWeight.bold)),
+                                Text(lang.getText("Your Location", "Lokasi Anda"), style: const TextStyle(color: Colors.grey)),
+                                const Text("Kuala Lumpur", style: TextStyle(fontWeight: FontWeight.bold)),
                               ],
                             ),
                             const Divider(height: 30),
                             Row(
                               mainAxisAlignment: MainAxisAlignment.spaceBetween,
                               children: [
-                                const Text("Distance to Kaabah"),
+                                Text(lang.getText("Distance to Kaabah", "Jarak ke Kaabah")),
                                 Text(
                                   "${distance.toStringAsFixed(0)} KM",
                                   style: const TextStyle(
@@ -144,13 +147,6 @@ class _QiblahScreenState extends State<QiblahScreen> {
                                   ),
                                 ),
                               ],
-                            ),
-                            const SizedBox(height: 15),
-                            LinearProgressIndicator(
-                              value: 0.8,
-                              minHeight: 10,
-                              backgroundColor: Colors.grey[200],
-                              color: AppTheme.accentGold,
                             ),
                           ],
                         ),
