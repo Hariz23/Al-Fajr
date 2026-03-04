@@ -2,9 +2,17 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:provider/provider.dart';
+import 'package:just_audio/just_audio.dart'; // Ensure this is in pubspec.yaml
 import 'language_provider.dart';
-import 'surah_data.dart'; // Import the new data file
+import 'surah_data.dart'; 
 import 'theme.dart';
+
+// --- RECITER MODEL ---
+class Reciter {
+  final String name;
+  final String id;
+  Reciter({required this.name, required this.id});
+}
 
 class QuranScreen extends StatefulWidget {
   const QuranScreen({super.key});
@@ -54,7 +62,6 @@ class _QuranScreenState extends State<QuranScreen> {
                   child: Text("$number", style: const TextStyle(color: Colors.white, fontSize: 12)),
                 ),
                 title: Text(surah['englishName'], style: const TextStyle(fontWeight: FontWeight.bold)),
-                // DUO-LANGUAGE SUBTITLE LOGIC
                 subtitle: Text(
                   lang.isEnglish 
                       ? surah['englishNameTranslation'] 
@@ -82,16 +89,46 @@ class _QuranScreenState extends State<QuranScreen> {
   }
 }
 
-class SurahDetailView extends StatelessWidget {
+// --- SURAH DETAIL VIEW WITH AUDIO ---
+class SurahDetailView extends StatefulWidget {
   final int surahNumber;
   final String surahName;
 
   const SurahDetailView({super.key, required this.surahNumber, required this.surahName});
 
+  @override
+  State<SurahDetailView> createState() => _SurahDetailViewState();
+}
+
+class _SurahDetailViewState extends State<SurahDetailView> {
+  final AudioPlayer _audioPlayer = AudioPlayer();
+  
+  // Malaysian Recommended Reciters
+  final List<Reciter> _reciters = [
+    Reciter(name: "Mishary Alafasy", id: "ar.alafasy"),
+    Reciter(name: "Abdullah Al-Matrood", id: "ar.almatrood"),
+    Reciter(name: "Saad Al-Ghamdi", id: "ar.saadghamidi"),
+    Reciter(name: "Maher Al-Muaiqly", id: "ar.mahermuaiqly"),
+  ];
+
+  late Reciter _selectedReciter;
+  int? _playingAyahIndex;
+
+  @override
+  void initState() {
+    super.initState();
+    _selectedReciter = _reciters[0];
+  }
+
+  @override
+  void dispose() {
+    _audioPlayer.dispose();
+    super.dispose();
+  }
+
   Future<Map<String, dynamic>> fetchAyahs(bool isEnglish) async {
-    // Uses English (Asad) or Malay (Basmeih)
     final edition = isEnglish ? "en.asad" : "ms.basmeih";
-    final url = 'https://api.alquran.cloud/v1/surah/$surahNumber/editions/quran-uthmani,$edition';
+    final url = 'https://api.alquran.cloud/v1/surah/${widget.surahNumber}/editions/quran-uthmani,$edition';
     
     final response = await http.get(Uri.parse(url));
     if (response.statusCode == 200) {
@@ -101,15 +138,45 @@ class SurahDetailView extends StatelessWidget {
     }
   }
 
+  Future<void> _playAudio(int globalAyahNumber, int index) async {
+    try {
+      setState(() => _playingAyahIndex = index);
+      final url = "https://cdn.islamic.network/quran/audio/128/${_selectedReciter.id}/$globalAyahNumber.mp3";
+      await _audioPlayer.setUrl(url);
+      _audioPlayer.play();
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Audio Error")));
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final lang = Provider.of<LanguageProvider>(context);
 
     return Scaffold(
       appBar: AppBar(
-        title: Text(surahName),
+        title: Text(widget.surahName),
         backgroundColor: AppTheme.primaryGreen,
         foregroundColor: Colors.white,
+        actions: [
+          // RECITER SELECTION DROPDOWN
+          DropdownButton<Reciter>(
+            underline: const SizedBox(),
+            icon: const Icon(Icons.mic, color: Colors.white),
+            onChanged: (Reciter? newValue) {
+              setState(() {
+                _selectedReciter = newValue!;
+              });
+            },
+            items: _reciters.map<DropdownMenuItem<Reciter>>((Reciter value) {
+              return DropdownMenuItem<Reciter>(
+                value: value,
+                child: Text(value.name, style: const TextStyle(color: Colors.black)),
+              );
+            }).toList(),
+          ),
+          const SizedBox(width: 10),
+        ],
       ),
       body: FutureBuilder<Map<String, dynamic>>(
         future: fetchAyahs(lang.isEnglish),
@@ -126,9 +193,8 @@ class SurahDetailView extends StatelessWidget {
             padding: const EdgeInsets.all(16),
             itemCount: arabicAyahs.length + 1,
             itemBuilder: (context, index) {
-              // Bismillah Header
               if (index == 0) {
-                if (surahNumber == 9 || surahNumber == 1) return const SizedBox.shrink();
+                if (widget.surahNumber == 9 || widget.surahNumber == 1) return const SizedBox.shrink();
                 return const Padding(
                   padding: EdgeInsets.symmetric(vertical: 25),
                   child: Center(
@@ -144,8 +210,7 @@ class SurahDetailView extends StatelessWidget {
               final translation = translatedAyahs[index - 1];
               String arabicText = arabic['text'];
 
-              // Clean Bismillah prefix if present
-              if (surahNumber != 1 && index == 1) {
+              if (widget.surahNumber != 1 && index == 1) {
                 arabicText = arabicText.replaceFirst("بِسْمِ ٱللَّهِ ٱلرَّحْمَٰنِ ٱلرَّحِيمِ", "");
               }
 
@@ -161,6 +226,24 @@ class SurahDetailView extends StatelessWidget {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.end,
                       children: [
+                        // Verse Action Bar (Play Button)
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            CircleAvatar(
+                              radius: 14,
+                              backgroundColor: Colors.grey[200],
+                              child: Text("${arabic['numberInSurah']}", style: const TextStyle(fontSize: 10, color: Colors.black)),
+                            ),
+                            IconButton(
+                              icon: Icon(
+                                _playingAyahIndex == index ? Icons.pause_circle_filled : Icons.play_circle_fill,
+                                color: AppTheme.primaryGreen,
+                              ),
+                              onPressed: () => _playAudio(arabic['number'], index),
+                            ),
+                          ],
+                        ),
                         Text(
                           arabicText,
                           textAlign: TextAlign.right,
@@ -176,13 +259,6 @@ class SurahDetailView extends StatelessWidget {
                           ),
                         ),
                       ],
-                    ),
-                  ),
-                  Padding(
-                    padding: const EdgeInsets.only(top: 8, bottom: 16),
-                    child: Text(
-                      "${lang.getText("Verse", "Ayat")} ${arabic['numberInSurah']}", 
-                      style: const TextStyle(color: Colors.grey, fontSize: 11)
                     ),
                   ),
                   const Divider(),

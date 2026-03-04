@@ -20,7 +20,7 @@ class NotificationSettingsScreen extends StatelessWidget {
       body: ListView(
         children: settings.keys.map((prayer) {
           return SwitchListTile(
-            activeColor: AppTheme.primaryGreen,
+            activeThumbColor: AppTheme.primaryGreen,
             secondary: Icon(
               settings[prayer]! ? Icons.notifications_active : Icons.notifications_off,
               color: settings[prayer]! ? AppTheme.primaryGreen : Colors.grey,

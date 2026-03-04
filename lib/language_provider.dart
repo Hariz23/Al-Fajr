@@ -5,7 +5,7 @@ class LanguageProvider extends ChangeNotifier {
   bool _isEnglish = true;
   bool get isEnglish => _isEnglish;
 
-  Map<String, bool> _prayerNotifications = {
+  final Map<String, bool> _prayerNotifications = {
     "Fajr": true,
     "Dhuhr": true,
     "Asr": true,

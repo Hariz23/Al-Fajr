@@ -28,7 +28,7 @@ class SettingsScreen extends StatelessWidget {
             secondary: const Icon(Icons.language, color: AppTheme.primaryGreen),
             title: Text(lang.getText("Language", "Bahasa")),
             subtitle: Text(lang.isEnglish ? "English" : "Bahasa Melayu"),
-            activeColor: AppTheme.primaryGreen,
+            activeThumbColor: AppTheme.primaryGreen,
             value: lang.isEnglish,
             onChanged: (bool value) => lang.toggleLanguage(),
           ),
@@ -96,7 +96,7 @@ class PrayerNotificationDetailScreen extends StatelessWidget {
       body: ListView(
         children: prayers.keys.map((prayerKey) {
           return SwitchListTile(
-            activeColor: AppTheme.primaryGreen,
+            activeThumbColor: AppTheme.primaryGreen,
             title: Text(_getPrayerDisplayName(prayerKey, lang)),
             value: prayers[prayerKey]!,
             onChanged: (bool value) {
