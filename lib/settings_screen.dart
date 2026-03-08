@@ -138,47 +138,25 @@ class PrayerNotificationDetailScreen extends StatelessWidget {
         foregroundColor: Colors.white,
       ),
       body: ListView(
+        padding: const EdgeInsets.symmetric(vertical: 10),
         children: [
-          // --- DEBUG BUTTON SECTION ---
-          Container(
-            margin: const EdgeInsets.all(16),
-            padding: const EdgeInsets.all(12),
-            decoration: BoxDecoration(
-              color: Colors.orange.withOpacity(0.1),
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: Colors.orange.shade300),
-            ),
-            child: Column(
-              children: [
-                const Row(
-                  children: [
-                    Icon(Icons.bug_report, color: Colors.orange),
-                    SizedBox(width: 8),
-                    Text("Debug Tool", style: TextStyle(fontWeight: FontWeight.bold, color: Colors.orange)),
-                  ],
-                ),
-                const SizedBox(height: 10),
-                SizedBox(
-                  width: double.infinity,
-                  child: ElevatedButton.icon(
-                    onPressed: () => lang.showTestAzanNotification(),
-                    icon: const Icon(Icons.play_arrow, color: Colors.white),
-                    label: const Text("TEST AZAN NOTIFICATION", style: TextStyle(color: Colors.white)),
-                    style: ElevatedButton.styleFrom(backgroundColor: Colors.orange),
-                  ),
-                ),
-                const Text(
-                  "Triggers notification immediately to verify sound settings.",
-                  style: TextStyle(fontSize: 11, color: Colors.grey),
-                )
-              ],
+          Padding(
+            padding: const EdgeInsets.all(16.0),
+            child: Text(
+              lang.getText(
+                "Select which prayers should trigger an Azan alert.", 
+                "Pilih waktu solat yang akan mencetuskan amaran Azan."
+              ),
+              style: const TextStyle(color: Colors.grey, fontSize: 13),
             ),
           ),
           const Divider(),
-
-          // --- PRAYER TOGGLES ---
           ...prayers.keys.map((prayerKey) {
             return SwitchListTile(
+              secondary: Icon(
+                prayerKey == "Fajr" ? Icons.wb_twilight : Icons.wb_sunny_outlined,
+                color: AppTheme.primaryGreen,
+              ),
               activeColor: AppTheme.primaryGreen,
               title: Text(lang.isEnglish ? prayerKey : _translatePrayer(prayerKey)),
               value: prayers[prayerKey]!,

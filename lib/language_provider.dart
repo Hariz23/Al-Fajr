@@ -10,7 +10,11 @@ class LanguageProvider extends ChangeNotifier {
   final FlutterLocalNotificationsPlugin _notificationsPlugin = FlutterLocalNotificationsPlugin();
 
   final Map<String, bool> _prayerNotifications = {
-    "Fajr": true, "Dhuhr": true, "Asr": true, "Maghrib": true, "Isha": true,
+    "Fajr": true,
+    "Dhuhr": true,
+    "Asr": true,
+    "Maghrib": true,
+    "Isha": true,
   };
 
   Map<String, bool> get prayerNotifications => _prayerNotifications;
@@ -20,7 +24,7 @@ class LanguageProvider extends ChangeNotifier {
     _initNotifications(); 
   }
 
-  // 2. Initialize using the NEW strict named parameters
+  // 2. Initialize using strict named parameters (v21.0.0+ style)
   Future<void> _initNotifications() async {
     const AndroidInitializationSettings initializationSettingsAndroid =
         AndroidInitializationSettings('@mipmap/ic_launcher');
@@ -30,17 +34,18 @@ class LanguageProvider extends ChangeNotifier {
     );
         
     await _notificationsPlugin.initialize(
-      settings: initializationSettings, // Required named parameter
+      settings: initializationSettings,
       onDidReceiveNotificationResponse: (NotificationResponse response) {
-        // Optional: handle notification tap
+        // Handle notification tap logic here
       },
     );
 
-    // Request permissions for Android 13+
+    // Request permissions for Android 13+ (Required for Azan to work)
     final androidImplementation = _notificationsPlugin
         .resolvePlatformSpecificImplementation<AndroidFlutterLocalNotificationsPlugin>();
     if (androidImplementation != null) {
       await androidImplementation.requestNotificationsPermission();
+      await androidImplementation.requestExactAlarmsPermission();
     }
   }
 
@@ -69,27 +74,37 @@ class LanguageProvider extends ChangeNotifier {
     }
   }
 
-  // 3. THE DEBUG METHOD (Fully updated for v21 naming)
-  void showTestAzanNotification() async {
-    const AndroidNotificationDetails androidDetails = AndroidNotificationDetails(
-      'azan_channel_v5', // Use a new ID to force a settings refresh
-      'Adhan Notifications',
-      channelDescription: 'Prayer time alerts with Azan sound',
+  // 3. THE MAIN TRIGGER (Fixed for separate sounds/channels)
+  void triggerPrayerAzan(String prayerName) async {
+    // Check if notifications are enabled for this specific prayer
+    if (_prayerNotifications[prayerName] == false) return;
+
+    bool isSubuh = (prayerName == "Fajr");
+    
+    // We use TWO different Channel IDs because Android locks 1 sound per channel
+    String channelId = isSubuh ? "subuh_channel_v1" : "standard_azan_channel_v1";
+    String channelName = isSubuh ? "Subuh Notifications" : "Standard Azan Notifications";
+    String soundFile = isSubuh ? "subuh" : "azan";
+
+    AndroidNotificationDetails androidDetails = AndroidNotificationDetails(
+      channelId, 
+      channelName,
+      channelDescription: 'Azan alerts for $prayerName',
       importance: Importance.max,
       priority: Priority.high,
-      sound: RawResourceAndroidNotificationSound('azan'), 
+      sound: RawResourceAndroidNotificationSound(soundFile), 
       playSound: true,
+      enableVibration: true,
     );
 
-    const NotificationDetails platformChannelSpecifics = NotificationDetails(
+    NotificationDetails platformChannelSpecifics = NotificationDetails(
       android: androidDetails,
     );
 
-    // ALL arguments MUST have names in v21+
     await _notificationsPlugin.show(
-      id: 99, 
-      title: getText("Test Azan", "Ujian Azan"),
-      body: getText("Checking sound: azan.mp3", "Menguji bunyi: azan.mp3"),
+      id: prayerName.hashCode, 
+      title: getText("Time for $prayerName", "Waktu Solat $prayerName"),
+      body: getText("Hayya 'ala-s-Salah", "Marilah menunaikan solat"),
       notificationDetails: platformChannelSpecifics,
     );
   }
