@@ -1,8 +1,9 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
-import 'package:provider/provider.dart'; // Add this
-import 'language_provider.dart'; // Add this
+import 'package:provider/provider.dart'; 
+import 'language_provider.dart'; 
+import 'admin_profile_provider.dart';
 import 'qiblah_screen.dart';
 import 'quran_screen.dart';
 import 'salat_screen.dart';
@@ -37,7 +38,7 @@ class _MainDashboardState extends State<MainDashboard> {
       const QuranScreen(),
       const QiblahScreen(),
       const CalendarScreen(),
-      const SettingsScreen(),
+      SettingsScreen(isAdmin: widget.isAdmin), // Passed isAdmin here
     ];
 
     return Scaffold(
@@ -53,31 +54,11 @@ class _MainDashboardState extends State<MainDashboard> {
         unselectedItemColor: Colors.grey,
         showUnselectedLabels: true,
         items: [
-          BottomNavigationBarItem(
-            icon: const Icon(Icons.home_outlined), 
-            activeIcon: const Icon(Icons.home), 
-            label: lang.getText("Home", "Utama")
-          ),
-          BottomNavigationBarItem(
-            icon: const Icon(Icons.menu_book_outlined), 
-            activeIcon: const Icon(Icons.menu_book), 
-            label: lang.getText("Quran", "Al-Quran")
-          ),
-          BottomNavigationBarItem(
-            icon: const Icon(Icons.explore_outlined), 
-            activeIcon: const Icon(Icons.explore), 
-            label: lang.getText("Qiblat", "Kiblat")
-          ),
-          BottomNavigationBarItem(
-            icon: const Icon(Icons.event_outlined), 
-            activeIcon: const Icon(Icons.event), 
-            label: lang.getText("Events", "Acara")
-          ),
-          BottomNavigationBarItem(
-            icon: const Icon(Icons.settings_outlined), 
-            activeIcon: const Icon(Icons.settings), 
-            label: lang.getText("Settings", "Tetapan")
-          ),
+          BottomNavigationBarItem(icon: const Icon(Icons.home_outlined), activeIcon: const Icon(Icons.home), label: lang.getText("Home", "Utama")),
+          BottomNavigationBarItem(icon: const Icon(Icons.menu_book_outlined), activeIcon: const Icon(Icons.menu_book), label: lang.getText("Quran", "Al-Quran")),
+          BottomNavigationBarItem(icon: const Icon(Icons.explore_outlined), activeIcon: const Icon(Icons.explore), label: lang.getText("Qiblat", "Kiblat")),
+          BottomNavigationBarItem(icon: const Icon(Icons.event_outlined), activeIcon: const Icon(Icons.event), label: lang.getText("Events", "Acara")),
+          BottomNavigationBarItem(icon: const Icon(Icons.settings_outlined), activeIcon: const Icon(Icons.settings), label: lang.getText("Settings", "Tetapan")),
         ],
       ),
     );
@@ -104,8 +85,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
   Future<void> _fetchPrayerTimes() async {
     try {
-      final response = await http.get(Uri.parse(
-          'https://api.aladhan.com/v1/timingsByCity?city=Kuala%20Lumpur&country=Malaysia&method=11'));
+      final response = await http.get(Uri.parse('https://api.aladhan.com/v1/timingsByCity?city=Kuala%20Lumpur&country=Malaysia&method=11'));
       if (response.statusCode == 200) {
         setState(() {
           prayerTimes = json.decode(response.body)['data']['timings'];
@@ -116,9 +96,38 @@ class _HomeScreenState extends State<HomeScreen> {
     }
   }
 
+  void _tryAccessAdmin(BuildContext context, AdminProfileProvider profile, LanguageProvider lang) {
+    if (!profile.isProfileComplete) {
+      showDialog(
+        context: context,
+        builder: (context) => AlertDialog(
+          title: Text(lang.getText("Access Denied", "Akses Disekat")),
+          content: Text(lang.getText(
+            "Please enter Masjid Name and State in Settings to access the admin panel.",
+            "Sila masukkan Nama Masjid dan Negeri di Tetapan untuk mengakses panel admin."
+          )),
+          actions: [
+            TextButton(onPressed: () => Navigator.pop(context), child: Text(lang.getText("Close", "Tutup"))),
+            ElevatedButton(
+              style: ElevatedButton.styleFrom(backgroundColor: AppTheme.primaryGreen),
+              onPressed: () {
+                Navigator.pop(context);
+                widget.onNavigate(4); 
+              }, 
+              child: Text(lang.getText("Go to Settings", "Ke Tetapan"), style: const TextStyle(color: Colors.white))
+            ),
+          ],
+        ),
+      );
+    } else {
+      Navigator.push(context, MaterialPageRoute(builder: (context) => const AdminPanel()));
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final lang = Provider.of<LanguageProvider>(context);
+    final adminProfile = Provider.of<AdminProfileProvider>(context);
 
     return Column(
       children: [
@@ -126,7 +135,7 @@ class _HomeScreenState extends State<HomeScreen> {
         Expanded(
           child: Padding(
             padding: const EdgeInsets.symmetric(horizontal: 20.0),
-            child: GridView( // Changed to GridView to allow dynamic children list
+            child: GridView(
               gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
                 crossAxisCount: 2,
                 mainAxisSpacing: 15,
@@ -147,9 +156,12 @@ class _HomeScreenState extends State<HomeScreen> {
                 _buildMenuCard(lang.getText("Qiblat Direction", "Arah Qiblat"), Icons.explore, () => widget.onNavigate(2)),
                 
                 if (widget.isAdmin)
-                  _buildMenuCard(lang.getText("Admin Panel", "Panel Admin"), Icons.admin_panel_settings, () {
-                    Navigator.push(context, MaterialPageRoute(builder: (context) => const AdminPanel()));
-                  }, isSpecial: true),
+                  _buildMenuCard(
+                    lang.getText("Admin Panel", "Panel Admin"), 
+                    Icons.admin_panel_settings, 
+                    () => _tryAccessAdmin(context, adminProfile, lang), 
+                    isSpecial: true
+                  ),
               ],
             ),
           ),
@@ -213,9 +225,7 @@ class _HomeScreenState extends State<HomeScreen> {
           color: isSpecial ? AppTheme.primaryGreen.withOpacity(0.1) : Colors.white,
           borderRadius: BorderRadius.circular(25),
           border: isSpecial ? Border.all(color: AppTheme.primaryGreen, width: 1) : null,
-          boxShadow: [
-            BoxShadow(color: Colors.black.withOpacity(0.04), blurRadius: 10, offset: const Offset(0, 4))
-          ],
+          boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.04), blurRadius: 10, offset: const Offset(0, 4))],
         ),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,

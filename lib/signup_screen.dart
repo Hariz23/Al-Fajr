@@ -13,68 +13,79 @@ class SignUpScreen extends StatefulWidget {
 class _SignUpScreenState extends State<SignUpScreen> {
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
-  final _nameController = TextEditingController();
+  bool _isLoading = false;
 
   Future<void> _signUp() async {
+    setState(() => _isLoading = true);
     try {
-      // 1. Create user in Firebase Auth
-      UserCredential userCredential = await FirebaseAuth.instance.createUserWithEmailAndPassword(
+      // 1. Create User in Firebase Auth
+      UserCredential userCredential = await FirebaseAuth.instance
+          .createUserWithEmailAndPassword(
         email: _emailController.text.trim(),
         password: _passwordController.text.trim(),
       );
 
-      // 2. Save user role to Firestore (Default is 'user')
-      await FirebaseFirestore.instance.collection('users').doc(userCredential.user!.uid).set({
-        'name': _nameController.text.trim(),
+      // 2. Create User Document in Firestore (CRITICAL for AuthWrapper)
+      await FirebaseFirestore.instance
+          .collection('users')
+          .doc(userCredential.user!.uid)
+          .set({
         'email': _emailController.text.trim(),
-        'role': 'user', // Default role
-        'createdAt': DateTime.now(),
+        'role': 'user', // Default role; change to 'admin' manually in Firebase Console if needed
+        'createdAt': FieldValue.serverTimestamp(),
       });
 
-      if (mounted) Navigator.pop(context); // Go back to login after success
-    } catch (e) {
+      // 3. Fix: Check if screen is still active before navigating
+      if (!mounted) return;
+
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text("Error: ${e.toString()}")),
+        const SnackBar(content: Text("Account created successfully!")),
       );
+      
+      // Navigate back to Login or let AuthWrapper handle it
+      Navigator.pop(context);
+
+    } on FirebaseAuthException catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(e.message ?? "Registration failed"), backgroundColor: Colors.red),
+      );
+    } finally {
+      if (mounted) setState(() => _isLoading = false);
     }
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text("Create Account")),
+      appBar: AppBar(title: const Text("Sign Up")),
       body: Padding(
-        padding: const EdgeInsets.all(30.0),
-        child: SingleChildScrollView(
-          child: Column(
-            children: [
-              TextField(
-                controller: _nameController,
-                decoration: const InputDecoration(labelText: "Full Name", border: OutlineInputBorder()),
+        padding: const EdgeInsets.all(25.0),
+        child: Column(
+          children: [
+            TextField(
+              controller: _emailController,
+              decoration: const InputDecoration(labelText: "Email"),
+            ),
+            const SizedBox(height: 15),
+            TextField(
+              controller: _passwordController,
+              decoration: const InputDecoration(labelText: "Password"),
+              obscureText: true,
+            ),
+            const SizedBox(height: 30),
+            SizedBox(
+              width: double.infinity,
+              height: 50,
+              child: ElevatedButton(
+                onPressed: _isLoading ? null : _signUp, // Prevents double-clicking
+                style: ElevatedButton.styleFrom(backgroundColor: AppTheme.primaryGreen),
+                child: _isLoading 
+                  ? const CircularProgressIndicator(color: Colors.white) 
+                  : const Text("SIGN UP", style: TextStyle(color: Colors.white)),
               ),
-              const SizedBox(height: 15),
-              TextField(
-                controller: _emailController,
-                decoration: const InputDecoration(labelText: "Email", border: OutlineInputBorder()),
-              ),
-              const SizedBox(height: 15),
-              TextField(
-                controller: _passwordController,
-                obscureText: true,
-                decoration: const InputDecoration(labelText: "Password", border: OutlineInputBorder()),
-              ),
-              const SizedBox(height: 30),
-              SizedBox(
-                width: double.infinity,
-                height: 55,
-                child: ElevatedButton(
-                  onPressed: _signUp,
-                  style: ElevatedButton.styleFrom(backgroundColor: AppTheme.primaryGreen),
-                  child: const Text("SIGN UP", style: TextStyle(color: Colors.white)),
-                ),
-              ),
-            ],
-          ),
+            ),
+          ],
         ),
       ),
     );
