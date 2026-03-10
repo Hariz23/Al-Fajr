@@ -1,12 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
+import 'package:timezone/timezone.dart' as tz;
+import 'package:timezone/data/latest_all.dart' as tz;
+import 'package:flutter_timezone/flutter_timezone.dart';
 
 class LanguageProvider extends ChangeNotifier {
   bool _isEnglish = true;
   bool get isEnglish => _isEnglish;
 
-  // 1. Setup the plugin instance
   final FlutterLocalNotificationsPlugin _notificationsPlugin = FlutterLocalNotificationsPlugin();
 
   final Map<String, bool> _prayerNotifications = {
@@ -24,8 +26,17 @@ class LanguageProvider extends ChangeNotifier {
     _initNotifications(); 
   }
 
-  // 2. Initialize using strict named parameters (v21.0.0+ style)
+  // --- 1. INITIALIZATION ---
   Future<void> _initNotifications() async {
+    // Initialize Timezones for Malaysia/Local
+    tz.initializeTimeZones();
+    try {
+      final TimezoneInfo tzInfo = await FlutterTimezone.getLocalTimezone();
+      tz.setLocalLocation(tz.getLocation(tzInfo.identifier)); 
+    } catch (e) {
+      debugPrint("Timezone error: $e");
+    }
+
     const AndroidInitializationSettings initializationSettingsAndroid =
         AndroidInitializationSettings('@mipmap/ic_launcher');
     
@@ -33,14 +44,12 @@ class LanguageProvider extends ChangeNotifier {
       android: initializationSettingsAndroid,
     );
         
+    // v21 requirement: use named 'settings' parameter
     await _notificationsPlugin.initialize(
       settings: initializationSettings,
-      onDidReceiveNotificationResponse: (NotificationResponse response) {
-        // Handle notification tap logic here
-      },
     );
 
-    // Request permissions for Android 13+ (Required for Azan to work)
+    // Request permissions for Android 13+ & Exact Alarms
     final androidImplementation = _notificationsPlugin
         .resolvePlatformSpecificImplementation<AndroidFlutterLocalNotificationsPlugin>();
     if (androidImplementation != null) {
@@ -49,6 +58,7 @@ class LanguageProvider extends ChangeNotifier {
     }
   }
 
+  // --- 2. STORAGE & LANGUAGE ---
   Future<void> _loadFromDisk() async {
     final prefs = await SharedPreferences.getInstance();
     _isEnglish = prefs.getBool('isEnglish') ?? true;
@@ -74,38 +84,73 @@ class LanguageProvider extends ChangeNotifier {
     }
   }
 
-  // 3. THE MAIN TRIGGER (Fixed for separate sounds/channels)
-  void triggerPrayerAzan(String prayerName) async {
-    // Check if notifications are enabled for this specific prayer
-    if (_prayerNotifications[prayerName] == false) return;
+  // --- 3. THE SCHEDULER (Fixed for v21) ---
+  Future<void> scheduleAllPrayers(Map<String, String> prayerTimes) async {
+    await _notificationsPlugin.cancelAll();
 
+    for (var entry in prayerTimes.entries) {
+      String prayerName = entry.key;
+      if (_prayerNotifications[prayerName] == false) continue;
+
+      try {
+        final now = DateTime.now();
+        final parts = entry.value.split(':');
+        var scheduledDate = DateTime(
+          now.year, now.month, now.day, 
+          int.parse(parts[0]), int.parse(parts[1])
+        );
+
+        if (scheduledDate.isBefore(now)) {
+          scheduledDate = scheduledDate.add(const Duration(days: 1));
+        }
+
+        bool isSubuh = (prayerName == "Fajr");
+        String channelId = isSubuh ? "subuh_channel" : "standard_azan";
+        String soundFile = isSubuh ? "subuh" : "azan";
+
+        // v21: All parameters are now NAMED and uiLocalNotificationDateInterpretation is removed
+        await _notificationsPlugin.zonedSchedule(
+          id: prayerName.hashCode,
+          title: getText("Time for $prayerName", "Waktu Solat $prayerName"),
+          body: getText("Hayya 'ala-s-Salah", "Marilah menunaikan solat"),
+          scheduledDate: tz.TZDateTime.from(scheduledDate, tz.local),
+          notificationDetails: NotificationDetails(
+            android: AndroidNotificationDetails(
+              channelId,
+              isSubuh ? "Subuh Notifications" : "Standard Azan",
+              importance: Importance.max,
+              priority: Priority.high,
+              sound: RawResourceAndroidNotificationSound(soundFile),
+              playSound: true,
+            ),
+          ),
+          androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
+        );
+      } catch (e) {
+        debugPrint("Error scheduling $prayerName: $e");
+      }
+    }
+  }
+
+  // --- 4. INSTANT TRIGGER (For Testing) ---
+  void triggerInstantAzan(String prayerName) async {
     bool isSubuh = (prayerName == "Fajr");
-    
-    // We use TWO different Channel IDs because Android locks 1 sound per channel
-    String channelId = isSubuh ? "subuh_channel_v1" : "standard_azan_channel_v1";
-    String channelName = isSubuh ? "Subuh Notifications" : "Standard Azan Notifications";
     String soundFile = isSubuh ? "subuh" : "azan";
-
-    AndroidNotificationDetails androidDetails = AndroidNotificationDetails(
-      channelId, 
-      channelName,
-      channelDescription: 'Azan alerts for $prayerName',
-      importance: Importance.max,
-      priority: Priority.high,
-      sound: RawResourceAndroidNotificationSound(soundFile), 
-      playSound: true,
-      enableVibration: true,
-    );
-
-    NotificationDetails platformChannelSpecifics = NotificationDetails(
-      android: androidDetails,
-    );
 
     await _notificationsPlugin.show(
       id: prayerName.hashCode, 
-      title: getText("Time for $prayerName", "Waktu Solat $prayerName"),
-      body: getText("Hayya 'ala-s-Salah", "Marilah menunaikan solat"),
-      notificationDetails: platformChannelSpecifics,
+      title: getText("Test: $prayerName", "Ujian: $prayerName"),
+      body: getText("Playing $soundFile.mp3", "Memainkan $soundFile.mp3"),
+      notificationDetails: NotificationDetails(
+        android: AndroidNotificationDetails(
+          "test_channel",
+          "Test Notification",
+          importance: Importance.max,
+          priority: Priority.high,
+          sound: RawResourceAndroidNotificationSound(soundFile),
+          playSound: true,
+        ),
+      ),
     );
   }
 

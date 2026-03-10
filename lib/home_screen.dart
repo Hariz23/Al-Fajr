@@ -14,6 +14,7 @@ import 'settings_screen.dart';
 import 'admin_panel.dart';
 import 'theme.dart';
 
+// --- DO NOT CHANGE: MainDashboard ---
 class MainDashboard extends StatefulWidget {
   final bool isAdmin; 
   const MainDashboard({super.key, required this.isAdmin});
@@ -38,7 +39,7 @@ class _MainDashboardState extends State<MainDashboard> {
       const QuranScreen(),
       const QiblahScreen(),
       const CalendarScreen(),
-      SettingsScreen(isAdmin: widget.isAdmin), // Passed isAdmin here
+      SettingsScreen(isAdmin: widget.isAdmin),
     ];
 
     return Scaffold(
@@ -65,6 +66,7 @@ class _MainDashboardState extends State<MainDashboard> {
   }
 }
 
+// --- DO NOT CHANGE: HomeScreen ---
 class HomeScreen extends StatefulWidget {
   final Function(int) onNavigate;
   final bool isAdmin;
@@ -80,16 +82,28 @@ class _HomeScreenState extends State<HomeScreen> {
   @override
   void initState() {
     super.initState();
-    _fetchPrayerTimes();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _fetchPrayerTimes();
+    });
   }
 
   Future<void> _fetchPrayerTimes() async {
     try {
       final response = await http.get(Uri.parse('https://api.aladhan.com/v1/timingsByCity?city=Kuala%20Lumpur&country=Malaysia&method=11'));
       if (response.statusCode == 200) {
-        setState(() {
-          prayerTimes = json.decode(response.body)['data']['timings'];
-        });
+        final data = json.decode(response.body)['data']['timings'];
+        if (mounted) {
+          setState(() {
+            prayerTimes = data;
+          });
+
+          // Schedule notifications using the new v21.0.0 logic in LanguageProvider
+          final lang = Provider.of<LanguageProvider>(context, listen: false);
+          Map<String, String> formattedTimes = (data as Map<String, dynamic>).map(
+            (key, value) => MapEntry(key, value.toString()),
+          );
+          await lang.scheduleAllPrayers(formattedTimes);
+        }
       }
     } catch (e) {
       debugPrint("Prayer Time API Error: $e");
@@ -131,7 +145,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
     return Column(
       children: [
-        _buildHeader(lang),
+        _buildHeader(lang, adminProfile),
         Expanded(
           child: Padding(
             padding: const EdgeInsets.symmetric(horizontal: 20.0),
@@ -170,7 +184,12 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  Widget _buildHeader(LanguageProvider lang) {
+  Widget _buildHeader(LanguageProvider lang, AdminProfileProvider adminProfile) {
+    // FIX: Handling the nullable masjidName and using your alias as fallback
+    String mosqueName = (adminProfile.masjidName != null && adminProfile.masjidName!.isNotEmpty)
+        ? adminProfile.masjidName! 
+        : "Welcome to Al-Fajr"; // Default text if masjidName is null or empty
+
     return Container(
       padding: const EdgeInsets.only(top: 60, bottom: 30, left: 25, right: 25),
       width: double.infinity,
@@ -182,7 +201,7 @@ class _HomeScreenState extends State<HomeScreen> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(lang.getText("Assalamu Alaikum,", "Assalamu Alaikum,"), style: const TextStyle(color: Colors.white70, fontSize: 16)),
-          const Text("Masjid Al-Fajr", style: TextStyle(color: Colors.white, fontSize: 26, fontWeight: FontWeight.bold)),
+          Text(mosqueName, style: const TextStyle(color: Colors.white, fontSize: 26, fontWeight: FontWeight.bold)),
           const SizedBox(height: 25),
           Container(
             padding: const EdgeInsets.all(15),
