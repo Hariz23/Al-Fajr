@@ -16,7 +16,6 @@ class CalendarScreen extends StatefulWidget {
 
 class _CalendarScreenState extends State<CalendarScreen> {
   String selectedState = "All"; 
-  String? selectedMasjid;
 
   final List<String> malaysianStates = [
     "All", "Johor", "Kedah", "Kelantan", "Melaka", "Negeri Sembilan", 
@@ -24,10 +23,31 @@ class _CalendarScreenState extends State<CalendarScreen> {
     "Selangor", "Terengganu", "W.P. Kuala Lumpur", "W.P. Labuan", "W.P. Putrajaya"
   ];
 
+  // --- SMART LINK LAUNCHER ---
   Future<void> _launchURL(String url) async {
-    final Uri uri = Uri.parse(url);
-    if (!await launchUrl(uri, mode: LaunchMode.externalApplication)) {
-      debugPrint("Could not launch $url");
+    if (url.isEmpty) return;
+
+    String trimmedUrl = url.trim();
+
+    // Fix: Add protocol if missing, otherwise launchUrl will fail
+    if (!trimmedUrl.startsWith('http://') && !trimmedUrl.startsWith('https://')) {
+      trimmedUrl = 'https://$trimmedUrl';
+    }
+
+    final Uri uri = Uri.parse(trimmedUrl);
+
+    try {
+      // Launch in external application (Browser/YouTube app)
+      if (!await launchUrl(uri, mode: LaunchMode.externalApplication)) {
+        debugPrint("Could not launch $trimmedUrl");
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text("Invalid link or no browser found.")),
+          );
+        }
+      }
+    } catch (e) {
+      debugPrint("Launch Error: $e");
     }
   }
 
@@ -37,8 +57,11 @@ class _CalendarScreenState extends State<CalendarScreen> {
 
     // Dynamic Query
     Query query = FirebaseFirestore.instance.collection('events');
-    if (selectedState != "All") query = query.where('state', isEqualTo: selectedState);
-    if (selectedMasjid != null) query = query.where('locationName', isEqualTo: selectedMasjid);
+    
+    if (selectedState != "All") {
+      query = query.where('state', isEqualTo: selectedState);
+    }
+    
     query = query.orderBy('eventDate', descending: false);
 
     return Scaffold(
@@ -49,10 +72,8 @@ class _CalendarScreenState extends State<CalendarScreen> {
       ),
       body: CustomScrollView(
         slivers: [
-          // 1. Sticky Filter Bar (stays at the top while scrolling)
           SliverToBoxAdapter(child: _buildFilterBar(lang)),
 
-          // 2. Hijri Calendar Section
           SliverToBoxAdapter(
             child: Padding(
               padding: const EdgeInsets.all(16.0),
@@ -67,7 +88,6 @@ class _CalendarScreenState extends State<CalendarScreen> {
             ),
           ),
 
-          // 3. Section Title
           SliverToBoxAdapter(
             child: Padding(
               padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
@@ -78,7 +98,6 @@ class _CalendarScreenState extends State<CalendarScreen> {
             ),
           ),
 
-          // 4. Event List (SliverStreamBuilder)
           StreamBuilder<QuerySnapshot>(
             stream: query.snapshots(),
             builder: (context, snapshot) {
@@ -98,42 +117,54 @@ class _CalendarScreenState extends State<CalendarScreen> {
                 );
               }
 
-              // Use SliverList so it works within the CustomScrollView
               return SliverPadding(
                 padding: const EdgeInsets.symmetric(horizontal: 20),
                 sliver: SliverList(
                   delegate: SliverChildBuilderDelegate(
                     (context, index) {
                       var data = docs[index].data() as Map<String, dynamic>;
-                      DateTime eventDate = (data['eventDate'] as Timestamp).toDate();
-                      String link = data['liveLink'] ?? "";
+
+                      // Null-safe Date Parsing
+                      final dynamic rawDate = data['eventDate'] ?? data['date'];
+                      DateTime eventDate = (rawDate is Timestamp) ? rawDate.toDate() : DateTime.now();
+
+                      // Reverted field names from original schema
+                      String title = data['title'] ?? "No Title";
+                      String location = data['locationName'] ?? data['masjidName'] ?? "Unknown Location";
+                      String link = data['liveLink'] ?? data['link'] ?? "";
 
                       return Card(
                         margin: const EdgeInsets.only(bottom: 12),
                         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
+                        elevation: 2,
                         child: ListTile(
                           contentPadding: const EdgeInsets.all(12),
                           leading: CircleAvatar(
-                            backgroundColor: data['venueType'] == 'Masjid' ? AppTheme.primaryGreen : Colors.orange,
-                            child: Icon(
-                              data['venueType'] == 'Masjid' ? Icons.mosque : Icons.house,
-                              color: Colors.white, size: 20,
-                            ),
+                            backgroundColor: AppTheme.primaryGreen,
+                            child: const Icon(Icons.mosque, color: Colors.white, size: 20),
                           ),
-                          title: Text(data['title'] ?? "No Title", style: const TextStyle(fontWeight: FontWeight.bold)),
+                          title: Text(title, style: const TextStyle(fontWeight: FontWeight.bold)),
                           subtitle: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              Text("${data['locationName']} • ${DateFormat('d MMM').format(eventDate)}"),
+                              Text("$location • ${DateFormat('d MMM').format(eventDate)}"),
                               if (link.isNotEmpty)
-                                TextButton.icon(
-                                  onPressed: () => _launchURL(link),
-                                  icon: const Icon(Icons.videocam, size: 18, color: Colors.red),
-                                  label: Text(lang.getText("JOIN LIVE NOW", "SERTAI SEKARANG"), 
-                                    style: const TextStyle(color: Colors.red, fontWeight: FontWeight.bold)),
+                                Padding(
+                                  padding: const EdgeInsets.only(top: 8.0),
+                                  child: Row(
+                                    children: [
+                                      const Icon(Icons.videocam, size: 16, color: Colors.red),
+                                      const SizedBox(width: 5),
+                                      Text(
+                                        lang.getText("JOIN LIVE", "SERTAI SEKARANG"), 
+                                        style: const TextStyle(color: Colors.red, fontWeight: FontWeight.bold, fontSize: 12)
+                                      ),
+                                    ],
+                                  ),
                                 ),
                             ],
                           ),
+                          onTap: link.isNotEmpty ? () => _launchURL(link) : null,
                         ),
                       );
                     },
@@ -144,48 +175,36 @@ class _CalendarScreenState extends State<CalendarScreen> {
             },
           ),
           
-          // Add some bottom padding so the last item isn't cut off
           const SliverToBoxAdapter(child: SizedBox(height: 50)),
         ],
       ),
     );
   }
 
-Widget _buildFilterBar(LanguageProvider lang) {
+  Widget _buildFilterBar(LanguageProvider lang) {
     return Container(
       padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 15),
       color: Colors.grey[100],
-      child: Column(
-        children: [
-          SingleChildScrollView(
-            scrollDirection: Axis.horizontal,
-            child: Row(
-              children: malaysianStates.map((stateName) {
-                bool isSelected = selectedState == stateName;
-                return Padding(
-                  padding: const EdgeInsets.only(right: 8.0),
-                  child: ChoiceChip(
-                    label: Text(stateName),
-                    selected: isSelected,
-                    selectedColor: AppTheme.primaryGreen,
-                    // --- FIX IS HERE ---
-                    labelStyle: TextStyle(
-                      color: isSelected ? Colors.white : Colors.black,
-                      fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
-                    ),
-                    // -------------------
-                    onSelected: (val) => setState(() {
-                      selectedState = stateName;
-                      selectedMasjid = null;
-                    }),
-                  ),
-                );
-              }).toList(),
-            ),
-          ),
-          if (selectedState != "All")
-            const SizedBox.shrink(),
-        ],
+      child: SingleChildScrollView(
+        scrollDirection: Axis.horizontal,
+        child: Row(
+          children: malaysianStates.map((stateName) {
+            bool isSelected = selectedState == stateName;
+            return Padding(
+              padding: const EdgeInsets.only(right: 8.0),
+              child: ChoiceChip(
+                label: Text(stateName),
+                selected: isSelected,
+                selectedColor: AppTheme.primaryGreen,
+                labelStyle: TextStyle(
+                  color: isSelected ? Colors.white : Colors.black,
+                  fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                ),
+                onSelected: (val) => setState(() => selectedState = stateName),
+              ),
+            );
+          }).toList(),
+        ),
       ),
     );
   }

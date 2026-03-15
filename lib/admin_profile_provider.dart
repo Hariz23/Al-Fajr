@@ -1,32 +1,57 @@
 import 'package:flutter/material.dart';
-import 'package:shared_preferences/shared_preferences.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 
-class AdminProfileProvider with ChangeNotifier {
+class AdminProfileProvider extends ChangeNotifier {
   String? _masjidName;
   String? _state;
+  String? _masjidID;
+  String? _role;
 
-  String? get masjidName => _masjidName;
-  String? get state => _state;
+  String get masjidName => _masjidName ?? '';
+  String get state => _state ?? '';
+  String get masjidID => _masjidID ?? '';
+  String get role => _role ?? 'user';
 
-  // Persistence: Loads data from disk when the app starts
-  Future<void> loadProfile() async {
-    final prefs = await SharedPreferences.getInstance();
-    _masjidName = prefs.getString('masjidName');
-    _state = prefs.getString('state');
-    notifyListeners();
+  bool get isProfileComplete => _masjidName != null && _masjidName!.isNotEmpty;
+  bool get isSuperAdmin => _role == 'super_admin';
+
+  AdminProfileProvider() {
+    fetchProfile(); // Initial load
   }
 
-  // UPDATED: Added SharedPreferences logic while KEEPING your names
-  void updateProfile(String masjidName, String state) async {
-    this._masjidName = masjidName;
-    this._state = state;
-    notifyListeners();
-
-    // ADAPTATION: Save to local storage so it persists after closing
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setString('masjidName', masjidName);
-    await prefs.setString('state', state);
+  // THIS IS THE MISSING FUNCTION
+  Future<void> fetchProfile() async {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user != null) {
+      final doc = await FirebaseFirestore.instance.collection('users').doc(user.uid).get();
+      if (doc.exists) {
+        final data = doc.data()!;
+        _masjidName = data['masjidName'];
+        _state = data['state'];
+        _masjidID = data['masjidID'];
+        _role = data['role'];
+        notifyListeners();
+      }
+    }
   }
 
-  bool get isProfileComplete => _masjidName != null && _masjidName!.isNotEmpty && _state != null;
+  // ADD THIS FOR THE PICKER TO CALL
+  // Inside your AdminProfileProvider class
+Future<void> updateProfile(String id, String name, String state) async {
+  final user = FirebaseAuth.instance.currentUser;
+  if (user != null) {
+    try {
+      await FirebaseFirestore.instance.collection('users').doc(user.uid).update({
+        'masjidID': id,
+        'masjidName': name,
+        'state': state,
+      });
+      // Refresh local variables and notify listeners
+      await fetchProfile(); 
+    } catch (e) {
+      debugPrint("Update Profile Error: $e");
+    }
+  }
+}
 }

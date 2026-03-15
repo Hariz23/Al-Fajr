@@ -4,16 +4,16 @@ import 'package:provider/provider.dart';
 import 'language_provider.dart';
 import 'admin_profile_provider.dart';
 import 'theme.dart';
+import 'super_admin_screen.dart'; // <-- New import!
 
-// --- MAIN SETTINGS SCREEN ---
 class SettingsScreen extends StatelessWidget {
   final bool isAdmin; 
   const SettingsScreen({super.key, required this.isAdmin});
 
   @override
   Widget build(BuildContext context) {
-    final lang = Provider.of<LanguageProvider>(context);
-    final adminProfile = Provider.of<AdminProfileProvider>(context);
+    final lang = context.watch<LanguageProvider>();
+    final adminProfile = context.watch<AdminProfileProvider>();
 
     return Scaffold(
       appBar: AppBar(
@@ -24,7 +24,6 @@ class SettingsScreen extends StatelessWidget {
       body: ListView(
         padding: const EdgeInsets.symmetric(vertical: 20),
         children: [
-          // 1. Language Toggle
           SwitchListTile(
             secondary: const Icon(Icons.language, color: AppTheme.primaryGreen),
             title: Text(lang.getText("Language", "Bahasa")),
@@ -35,8 +34,22 @@ class SettingsScreen extends StatelessWidget {
           ),
           const Divider(),
 
-          // 2. Admin Identity Section (Visible ONLY to Admins)
-          if (isAdmin) ...[
+          // --- SUPER ADMIN GOD MODE PANEL ---
+          if (adminProfile.isSuperAdmin) ...[
+            ListTile(
+              leading: const Icon(Icons.admin_panel_settings, color: Colors.blueAccent, size: 30),
+              title: const Text("Super Admin Portal", style: TextStyle(fontWeight: FontWeight.bold, color: Colors.blueAccent)),
+              subtitle: const Text("Manage Masjids & Users"),
+              trailing: const Icon(Icons.chevron_right, color: Colors.blueAccent),
+              onTap: () {
+                Navigator.push(context, MaterialPageRoute(builder: (context) => const SuperAdminScreen()));
+              },
+            ),
+            const Divider(),
+          ],
+
+          // --- REGULAR ADMIN (LOCKED) ---
+          if (isAdmin && !adminProfile.isSuperAdmin) ...[
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
               child: Text(
@@ -45,42 +58,18 @@ class SettingsScreen extends StatelessWidget {
               ),
             ),
             ListTile(
-              leading: const Icon(Icons.account_balance, color: AppTheme.primaryGreen),
-              title: Text(lang.getText("Masjid & State", "Masjid & Negeri")),
+              leading: const Icon(Icons.lock, color: Colors.grey), // Changed to a lock icon
+              title: Text(lang.getText("Assigned Masjid", "Masjid Ditetapkan")),
               subtitle: Text(
                 adminProfile.isProfileComplete 
                   ? "${adminProfile.masjidName} (${adminProfile.state})" 
-                  : lang.getText("Required for posting", "Wajib diisi untuk memulakan pos")
+                  : lang.getText("Contact Super Admin to assign", "Sila hubungi Super Admin")
               ),
-              trailing: const Icon(Icons.edit, size: 20, color: Colors.grey),
-              onTap: () => _showAdminIdentityDialog(context, adminProfile, lang),
+              // NO onTap HERE! They are locked.
             ),
             const Divider(),
           ],
 
-          // 3. PRAYER NOTIFICATIONS
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-            child: Text(
-              lang.getText("Notifications", "Notifikasi"),
-              style: const TextStyle(fontWeight: FontWeight.bold, color: AppTheme.primaryGreen),
-            ),
-          ),
-          ListTile(
-            leading: const Icon(Icons.notifications_active_outlined, color: AppTheme.primaryGreen),
-            title: Text(lang.getText("Prayer Time Alerts", "Amaran Waktu Solat")),
-            subtitle: Text(lang.getText("Configure Azan sounds", "Tetapkan bunyi Azan")),
-            trailing: const Icon(Icons.chevron_right),
-            onTap: () {
-              Navigator.push(
-                context, 
-                MaterialPageRoute(builder: (context) => const PrayerNotificationDetailScreen())
-              );
-            },
-          ),
-          const Divider(),
-
-          // 4. Logout
           ListTile(
             leading: const Icon(Icons.logout, color: Colors.redAccent),
             title: Text(
@@ -91,13 +80,6 @@ class SettingsScreen extends StatelessWidget {
           ),
         ],
       ),
-    );
-  }
-
-  void _showAdminIdentityDialog(BuildContext context, AdminProfileProvider profile, LanguageProvider lang) {
-    showDialog(
-      context: context,
-      builder: (context) => AdminIdentityPicker(profile: profile, lang: lang),
     );
   }
 
@@ -118,119 +100,6 @@ class SettingsScreen extends StatelessWidget {
           ),
         ],
       ),
-    );
-  }
-}
-
-// --- PRAYER NOTIFICATION DETAIL SCREEN CLASS ---
-class PrayerNotificationDetailScreen extends StatelessWidget {
-  const PrayerNotificationDetailScreen({super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    final lang = Provider.of<LanguageProvider>(context);
-    final prayers = lang.prayerNotifications;
-
-    return Scaffold(
-      appBar: AppBar(
-        title: Text(lang.getText("Notification Settings", "Tetapan Notifikasi")),
-        backgroundColor: AppTheme.primaryGreen,
-        foregroundColor: Colors.white,
-      ),
-      body: ListView(
-        padding: const EdgeInsets.symmetric(vertical: 10),
-        children: [
-          Padding(
-            padding: const EdgeInsets.all(16.0),
-            child: Text(
-              lang.getText(
-                "Select which prayers should trigger an Azan alert.", 
-                "Pilih waktu solat yang akan mencetuskan amaran Azan."
-              ),
-              style: const TextStyle(color: Colors.grey, fontSize: 13),
-            ),
-          ),
-          const Divider(),
-          ...prayers.keys.map((prayerKey) {
-            return SwitchListTile(
-              secondary: Icon(
-                prayerKey == "Fajr" ? Icons.wb_twilight : Icons.wb_sunny_outlined,
-                color: AppTheme.primaryGreen,
-              ),
-              activeColor: AppTheme.primaryGreen,
-              title: Text(lang.isEnglish ? prayerKey : _translatePrayer(prayerKey)),
-              value: prayers[prayerKey]!,
-              onChanged: (bool value) => lang.togglePrayerNotification(prayerKey),
-            );
-          }),
-        ],
-      ),
-    );
-  }
-
-  String _translatePrayer(String key) {
-    Map<String, String> translations = {
-      "Fajr": "Subuh", "Dhuhr": "Zohor", "Asr": "Asar", "Maghrib": "Maghrib", "Isha": "Isyak"
-    };
-    return translations[key] ?? key;
-  }
-}
-
-// --- ADMIN IDENTITY PICKER WIDGET CLASS ---
-class AdminIdentityPicker extends StatefulWidget {
-  final AdminProfileProvider profile;
-  final LanguageProvider lang;
-  const AdminIdentityPicker({super.key, required this.profile, required this.lang});
-
-  @override
-  State<AdminIdentityPicker> createState() => _AdminIdentityPickerState();
-}
-
-class _AdminIdentityPickerState extends State<AdminIdentityPicker> {
-  final List<String> _states = ["Selangor", "Putrajaya", "Kuala Lumpur"];
-  final Map<String, List<String>> _masjids = {
-    "Selangor": ["Masjid Bukit Jelutong", "Masjid Subang Jaya"],
-    "Putrajaya": ["Masjid Putra"],
-    "Kuala Lumpur": ["Masjid Wilayah"],
-  };
-
-  String? _tempState;
-  String? _tempMasjid;
-
-  @override
-  Widget build(BuildContext context) {
-    return AlertDialog(
-      title: Text(widget.lang.getText("Identity Setup", "Tetapan Identiti")),
-      content: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          DropdownButtonFormField<String>(
-            decoration: const InputDecoration(labelText: "State"),
-            items: _states.map((s) => DropdownMenuItem(value: s, child: Text(s))).toList(),
-            onChanged: (val) => setState(() { _tempState = val; _tempMasjid = null; }),
-          ),
-          const SizedBox(height: 10),
-          if (_tempState != null)
-            DropdownButtonFormField<String>(
-              decoration: const InputDecoration(labelText: "Masjid/Surau"),
-              items: _masjids[_tempState]!.map((m) => DropdownMenuItem(value: m, child: Text(m))).toList(),
-              onChanged: (val) => setState(() => _tempMasjid = val),
-            ),
-        ],
-      ),
-      actions: [
-        TextButton(onPressed: () => Navigator.pop(context), child: Text(widget.lang.getText("Cancel", "Batal"))),
-        ElevatedButton(
-          style: ElevatedButton.styleFrom(backgroundColor: AppTheme.primaryGreen),
-          onPressed: () {
-            if (_tempState != null && _tempMasjid != null) {
-              widget.profile.updateProfile(_tempMasjid!, _tempState!);
-              Navigator.pop(context);
-            }
-          },
-          child: Text(widget.lang.getText("Save", "Simpan"), style: const TextStyle(color: Colors.white)),
-        ),
-      ],
     );
   }
 }

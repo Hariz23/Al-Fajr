@@ -2,8 +2,9 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:provider/provider.dart'; 
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'language_provider.dart'; 
-import 'admin_profile_provider.dart';
 import 'qiblah_screen.dart';
 import 'quran_screen.dart';
 import 'salat_screen.dart';
@@ -14,7 +15,6 @@ import 'settings_screen.dart';
 import 'admin_panel.dart';
 import 'theme.dart';
 
-// --- DO NOT CHANGE: MainDashboard ---
 class MainDashboard extends StatefulWidget {
   final bool isAdmin; 
   const MainDashboard({super.key, required this.isAdmin});
@@ -66,7 +66,6 @@ class _MainDashboardState extends State<MainDashboard> {
   }
 }
 
-// --- DO NOT CHANGE: HomeScreen ---
 class HomeScreen extends StatefulWidget {
   final Function(int) onNavigate;
   final bool isAdmin;
@@ -96,8 +95,6 @@ class _HomeScreenState extends State<HomeScreen> {
           setState(() {
             prayerTimes = data;
           });
-
-          // Schedule notifications using the new v21.0.0 logic in LanguageProvider
           final lang = Provider.of<LanguageProvider>(context, listen: false);
           Map<String, String> formattedTimes = (data as Map<String, dynamic>).map(
             (key, value) => MapEntry(key, value.toString()),
@@ -110,85 +107,87 @@ class _HomeScreenState extends State<HomeScreen> {
     }
   }
 
-  void _tryAccessAdmin(BuildContext context, AdminProfileProvider profile, LanguageProvider lang) {
-    if (!profile.isProfileComplete) {
+  void _tryAccessAdmin(BuildContext context, String? mId, String? mName, LanguageProvider lang) {
+    if (mId == null || mId.isEmpty) {
       showDialog(
         context: context,
         builder: (context) => AlertDialog(
           title: Text(lang.getText("Access Denied", "Akses Disekat")),
           content: Text(lang.getText(
-            "Please enter Masjid Name and State in Settings to access the admin panel.",
-            "Sila masukkan Nama Masjid dan Negeri di Tetapan untuk mengakses panel admin."
+            "Your account is not assigned to a Masjid yet. Please contact Super Admin.",
+            "Akaun anda belum didaftarkan ke mana-mana Masjid. Sila hubungi Super Admin."
           )),
           actions: [
             TextButton(onPressed: () => Navigator.pop(context), child: Text(lang.getText("Close", "Tutup"))),
-            ElevatedButton(
-              style: ElevatedButton.styleFrom(backgroundColor: AppTheme.primaryGreen),
-              onPressed: () {
-                Navigator.pop(context);
-                widget.onNavigate(4); 
-              }, 
-              child: Text(lang.getText("Go to Settings", "Ke Tetapan"), style: const TextStyle(color: Colors.white))
-            ),
           ],
         ),
       );
     } else {
-      Navigator.push(context, MaterialPageRoute(builder: (context) => const AdminPanel()));
+      Navigator.push(context, MaterialPageRoute(builder: (context) => AdminPanel(masjidId: mId, masjidName: mName)));
     }
   }
 
   @override
   Widget build(BuildContext context) {
     final lang = Provider.of<LanguageProvider>(context);
-    final adminProfile = Provider.of<AdminProfileProvider>(context);
+    final user = FirebaseAuth.instance.currentUser;
 
-    return Column(
-      children: [
-        _buildHeader(lang, adminProfile),
-        Expanded(
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 20.0),
-            child: GridView(
-              gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                crossAxisCount: 2,
-                mainAxisSpacing: 15,
-                crossAxisSpacing: 15,
-              ),
-              padding: const EdgeInsets.only(top: 20),
-              children: [
-                _buildMenuCard(lang.getText("Al-Quran", "Al-Quran"), Icons.menu_book, () => widget.onNavigate(1)),
-                _buildMenuCard(lang.getText("Prayer Times", "Waktu Solat"), Icons.access_time, () {
-                   Navigator.push(context, MaterialPageRoute(builder: (context) => const SalatScreen()));
-                }),
-                _buildMenuCard(lang.getText("Dhikr & Dua", "Zikir & Doa"), Icons.auto_awesome, () {
-                  Navigator.push(context, MaterialPageRoute(builder: (context) => const ZikirDoaScreen()));
-                }),
-                _buildMenuCard(lang.getText("Zakat", "Zakat"), Icons.volunteer_activism, () {
-                  Navigator.push(context, MaterialPageRoute(builder: (context) => const ZakatScreen()));
-                }),
-                _buildMenuCard(lang.getText("Qiblat Direction", "Arah Qiblat"), Icons.explore, () => widget.onNavigate(2)),
-                
-                if (widget.isAdmin)
-                  _buildMenuCard(
-                    lang.getText("Admin Panel", "Panel Admin"), 
-                    Icons.admin_panel_settings, 
-                    () => _tryAccessAdmin(context, adminProfile, lang), 
-                    isSpecial: true
+    return StreamBuilder<DocumentSnapshot>(
+      stream: FirebaseFirestore.instance.collection('users').doc(user?.uid).snapshots(),
+      builder: (context, snapshot) {
+        final userData = snapshot.data?.data() as Map<String, dynamic>?;
+        final String? liveMasjidName = userData?['masjidName'];
+        final String? liveMasjidId = userData?['masjidID'];
+        final String role = userData?['role'] ?? 'user';
+        final bool liveIsAdmin = role == 'admin' || role == 'super_admin';
+
+        return Column(
+          children: [
+            _buildHeader(lang, liveMasjidName),
+            Expanded(
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 20.0),
+                child: GridView(
+                  gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                    crossAxisCount: 2,
+                    mainAxisSpacing: 15,
+                    crossAxisSpacing: 15,
                   ),
-              ],
+                  padding: const EdgeInsets.only(top: 20),
+                  children: [
+                    _buildMenuCard(lang.getText("Al-Quran", "Al-Quran"), Icons.menu_book, () => widget.onNavigate(1)),
+                    _buildMenuCard(lang.getText("Prayer Times", "Waktu Solat"), Icons.access_time, () {
+                       Navigator.push(context, MaterialPageRoute(builder: (context) => const SalatScreen()));
+                    }),
+                    _buildMenuCard(lang.getText("Dhikr & Dua", "Zikir & Doa"), Icons.auto_awesome, () {
+                      Navigator.push(context, MaterialPageRoute(builder: (context) => const ZikirDoaScreen()));
+                    }),
+                    _buildMenuCard(lang.getText("Zakat", "Zakat"), Icons.volunteer_activism, () {
+                      Navigator.push(context, MaterialPageRoute(builder: (context) => const ZakatScreen()));
+                    }),
+                    _buildMenuCard(lang.getText("Qiblat Direction", "Arah Qiblat"), Icons.explore, () => widget.onNavigate(2)),
+                    
+                    if (liveIsAdmin)
+                      _buildMenuCard(
+                        lang.getText("Admin Panel", "Panel Admin"), 
+                        Icons.admin_panel_settings, 
+                        () => _tryAccessAdmin(context, liveMasjidId, liveMasjidName, lang), 
+                        isSpecial: true
+                      ),
+                  ],
+                ),
+              ),
             ),
-          ),
-        ),
-      ],
+          ],
+        );
+      }
     );
   }
 
-  Widget _buildHeader(LanguageProvider lang, AdminProfileProvider adminProfile) {
-    // FIX: Handling the nullable masjidName and using your alias as fallback
-    String mosqueName = (adminProfile.masjidName != null && adminProfile.masjidName!.isNotEmpty)
-        ? adminProfile.masjidName! 
-        : "Welcome to Al-Fajr"; // Default text if masjidName is null or empty
+  Widget _buildHeader(LanguageProvider lang, String? masjidName) {
+    String mainTitle = (masjidName != null && masjidName.isNotEmpty) 
+        ? masjidName 
+        : lang.getText("Welcome to Al-Fajr", "Selamat Datang ke Al-Fajr");
 
     return Container(
       padding: const EdgeInsets.only(top: 60, bottom: 30, left: 25, right: 25),
@@ -201,7 +200,7 @@ class _HomeScreenState extends State<HomeScreen> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(lang.getText("Assalamu Alaikum,", "Assalamu Alaikum,"), style: const TextStyle(color: Colors.white70, fontSize: 16)),
-          Text(mosqueName, style: const TextStyle(color: Colors.white, fontSize: 26, fontWeight: FontWeight.bold)),
+          Text(mainTitle, style: const TextStyle(color: Colors.white, fontSize: 24, fontWeight: FontWeight.bold)),
           const SizedBox(height: 25),
           Container(
             padding: const EdgeInsets.all(15),

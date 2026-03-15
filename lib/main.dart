@@ -51,16 +51,20 @@ class AuthWrapper extends StatelessWidget {
           return const Scaffold(body: Center(child: CircularProgressIndicator()));
         }
         if (snapshot.hasData) {
-          return FutureBuilder<DocumentSnapshot>(
-            future: FirebaseFirestore.instance.collection('users').doc(snapshot.data!.uid).get(),
+          return StreamBuilder<DocumentSnapshot>(
+            stream: FirebaseFirestore.instance.collection('users').doc(snapshot.data!.uid).snapshots(),
             builder: (context, roleSnapshot) {
               if (roleSnapshot.connectionState == ConnectionState.waiting) {
                 return const Scaffold(body: Center(child: CircularProgressIndicator()));
               }
+              
               bool isAdmin = false;
               if (roleSnapshot.hasData && roleSnapshot.data!.exists) {
                 final data = roleSnapshot.data!.data() as Map<String, dynamic>?;
-                isAdmin = data != null && data['role'] == 'admin';
+                if (data != null) {
+                  String role = data['role'] ?? 'user';
+                  isAdmin = role == 'admin' || role == 'super_admin';
+                }
               }
               return MainDashboard(isAdmin: isAdmin);
             },
