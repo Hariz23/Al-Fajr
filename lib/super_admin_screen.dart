@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:provider/provider.dart';
+import 'language_provider.dart';
 
 class SuperAdminScreen extends StatefulWidget {
   const SuperAdminScreen({super.key});
@@ -12,6 +14,7 @@ class _SuperAdminScreenState extends State<SuperAdminScreen> {
   final _masjidNameController = TextEditingController();
   final _adminEmailController = TextEditingController();
 
+  // Keep this here! This is the source of truth for the whole app.
   final List<String> _states = [
     "Johor", "Kedah", "Kelantan", "Melaka", "Negeri Sembilan", "Pahang", 
     "Perak", "Perlis", "Pulau Pinang", "Sabah", "Sarawak", "Selangor", 
@@ -21,7 +24,6 @@ class _SuperAdminScreenState extends State<SuperAdminScreen> {
   String? _selectedState;
   String? _selectedMasjidId;
 
-  // Professional Feedback Styling
   void _showFeedback(String message, {bool isError = false}) {
     if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
@@ -36,10 +38,10 @@ class _SuperAdminScreenState extends State<SuperAdminScreen> {
   }
 
   // 1. REGISTER NEW MASJID
-  Future<void> _addMasjid() async {
+  Future<void> _addMasjid(LanguageProvider lang) async {
     final name = _masjidNameController.text.trim();
     if (name.isEmpty || _selectedState == null) {
-      _showFeedback("Name and State are required", isError: true);
+      _showFeedback(lang.getText("Name and State are required", "Nama dan Negeri diperlukan"), isError: true);
       return;
     }
     try {
@@ -51,17 +53,17 @@ class _SuperAdminScreenState extends State<SuperAdminScreen> {
       });
       _masjidNameController.clear();
       setState(() => _selectedState = null);
-      _showFeedback("Masjid Registered Successfully!");
+      _showFeedback(lang.getText("Masjid Registered Successfully!", "Masjid Berjaya Didaftarkan!"));
     } catch (e) {
       _showFeedback("Database Error: $e", isError: true);
     }
   }
 
-  // 2. ASSIGN ADMIN (Triggers Home Screen Stream update)
-  Future<void> _assignAdmin() async {
+  // 2. ASSIGN ADMIN
+  Future<void> _assignAdmin(LanguageProvider lang) async {
     final emailInput = _adminEmailController.text.trim().toLowerCase();
     if (_selectedMasjidId == null || emailInput.isEmpty) {
-      _showFeedback("Selection required", isError: true);
+      _showFeedback(lang.getText("Selection required", "Pilihan diperlukan"), isError: true);
       return;
     }
 
@@ -72,19 +74,17 @@ class _SuperAdminScreenState extends State<SuperAdminScreen> {
           .get();
 
       if (userSnap.docs.isEmpty) {
-        _showFeedback("User not found: $emailInput", isError: true);
+        _showFeedback(lang.getText("User not found", "Pengguna tidak ditemui"), isError: true);
         return;
       }
 
       var userDoc = userSnap.docs.first;
       final userData = userDoc.data();
       String currentRole = userData['role'] ?? 'user';
-      String? oldMasjid = userData['masjidName'];
 
       final masjidDoc = await FirebaseFirestore.instance.collection('masjids').doc(_selectedMasjidId).get();
       final String newMasjid = masjidDoc.data()?['name'] ?? 'Unknown';
 
-      // Keep super_admin status if it already exists
       String finalRole = (currentRole == 'super_admin') ? 'super_admin' : 'admin';
 
       await FirebaseFirestore.instance.collection('users').doc(userDoc.id).update({
@@ -94,9 +94,7 @@ class _SuperAdminScreenState extends State<SuperAdminScreen> {
       });
 
       _adminEmailController.clear();
-      _showFeedback(oldMasjid != null && oldMasjid != newMasjid 
-          ? "Moved $emailInput to $newMasjid" 
-          : "Permissions granted for $newMasjid");
+      _showFeedback(lang.getText("Permissions granted for $newMasjid", "Kebenaran diberikan untuk $newMasjid"));
     } catch (e) {
       _showFeedback("Assignment Error: $e", isError: true);
     }
@@ -104,13 +102,14 @@ class _SuperAdminScreenState extends State<SuperAdminScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final lang = context.watch<LanguageProvider>();
+
     return Scaffold(
       backgroundColor: const Color(0xFFF4F7F6),
       appBar: AppBar(
-        title: const Text("System Control", style: TextStyle(fontWeight: FontWeight.bold)),
+        title: Text(lang.getText("System Control", "Kawalan Sistem"), style: const TextStyle(fontWeight: FontWeight.bold)),
         backgroundColor: const Color(0xFF1A237E),
         foregroundColor: Colors.white,
-        elevation: 0,
       ),
       body: Column(
         children: [
@@ -119,21 +118,21 @@ class _SuperAdminScreenState extends State<SuperAdminScreen> {
               padding: const EdgeInsets.all(16),
               child: Column(
                 children: [
-                  _buildHeaderCard("Masjid Registration", Icons.domain, const Color(0xFF1A237E), [
-                    _buildTextField(_masjidNameController, "Masjid Name", Icons.edit_location),
+                  _buildHeaderCard(lang.getText("Masjid Registration", "Pendaftaran Masjid"), Icons.domain, const Color(0xFF1A237E), [
+                    _buildTextField(_masjidNameController, lang.getText("Masjid Name", "Nama Masjid"), Icons.edit_location),
                     const SizedBox(height: 12),
-                    _buildDropdown("Select State", _states, _selectedState, (v) => setState(() => _selectedState = v)),
+                    _buildDropdown(lang.getText("Select State", "Pilih Negeri"), _states, _selectedState, (v) => setState(() => _selectedState = v)),
                     const SizedBox(height: 15),
-                    _buildButton("SAVE MASJID", const Color(0xFF1A237E), _addMasjid),
+                    _buildButton(lang.getText("SAVE MASJID", "SIMPAN MASJID"), const Color(0xFF1A237E), () => _addMasjid(lang)),
                   ]),
                   const SizedBox(height: 16),
-                  _buildHeaderCard("Access Assignment", Icons.admin_panel_settings, Colors.teal, [
+                  _buildHeaderCard(lang.getText("Access Assignment", "Tugasan Akses"), Icons.admin_panel_settings, Colors.teal, [
                     StreamBuilder<QuerySnapshot>(
                       stream: FirebaseFirestore.instance.collection('masjids').snapshots(),
                       builder: (context, snap) {
                         if (!snap.hasData) return const LinearProgressIndicator();
                         return _buildDropdown(
-                          "Choose Target Masjid", 
+                          lang.getText("Choose Target Masjid", "Pilih Masjid Sasaran"), 
                           snap.data!.docs.map((doc) => doc.id).toList(), 
                           _selectedMasjidId, 
                           (v) => setState(() => _selectedMasjidId = v),
@@ -142,15 +141,15 @@ class _SuperAdminScreenState extends State<SuperAdminScreen> {
                       },
                     ),
                     const SizedBox(height: 12),
-                    _buildTextField(_adminEmailController, "Admin Email", Icons.alternate_email),
+                    _buildTextField(_adminEmailController, lang.getText("Admin Email", "Emel Admin"), Icons.alternate_email),
                     const SizedBox(height: 15),
-                    _buildButton("ASSIGN PERMISSIONS", Colors.teal, _assignAdmin),
+                    _buildButton(lang.getText("ASSIGN PERMISSIONS", "BERI KEBENARAN"), Colors.teal, () => _assignAdmin(lang)),
                   ]),
                 ],
               ),
             ),
           ),
-          _buildLiveObserver(), // Put your live activity watcher back at the bottom
+          _buildLiveObserver(lang),
         ],
       ),
     );
@@ -215,7 +214,7 @@ class _SuperAdminScreenState extends State<SuperAdminScreen> {
     );
   }
 
-  Widget _buildLiveObserver() {
+  Widget _buildLiveObserver(LanguageProvider lang) {
     return Container(
       height: 220,
       decoration: const BoxDecoration(
@@ -225,9 +224,12 @@ class _SuperAdminScreenState extends State<SuperAdminScreen> {
       ),
       child: Column(
         children: [
-          const Padding(
-            padding: EdgeInsets.symmetric(vertical: 12),
-            child: Text("Live System Activity", style: TextStyle(fontWeight: FontWeight.bold, color: Colors.blueGrey)),
+          Padding(
+            padding: const EdgeInsets.symmetric(vertical: 12),
+            child: Text(
+              lang.getText("Live System Activity", "Aktiviti Sistem Langsung"), 
+              style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.blueGrey)
+            ),
           ),
           Expanded(
             child: StreamBuilder<QuerySnapshot>(
@@ -248,7 +250,10 @@ class _SuperAdminScreenState extends State<SuperAdminScreen> {
                         child: Icon(isSuper ? Icons.stars : Icons.person, color: isSuper ? Colors.amber : Colors.teal),
                       ),
                       title: Text(data['email'] ?? 'No Email', style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600)),
-                      subtitle: Text(data['masjidName'] ?? 'Floating Admin', style: const TextStyle(fontSize: 12)),
+                      subtitle: Text(
+                        data['masjidName'] ?? lang.getText('Floating Admin', 'Admin Bebas'), 
+                        style: const TextStyle(fontSize: 12)
+                      ),
                       trailing: isSuper ? const Badge(label: Text("SUPER", style: TextStyle(color: Colors.white, fontSize: 10)), backgroundColor: Colors.amber) : null,
                     );
                   },

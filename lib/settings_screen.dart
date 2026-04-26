@@ -4,7 +4,7 @@ import 'package:provider/provider.dart';
 import 'language_provider.dart';
 import 'admin_profile_provider.dart';
 import 'theme.dart';
-import 'super_admin_screen.dart'; // <-- New import!
+import 'super_admin_screen.dart';
 
 class SettingsScreen extends StatelessWidget {
   final bool isAdmin; 
@@ -24,6 +24,7 @@ class SettingsScreen extends StatelessWidget {
       body: ListView(
         padding: const EdgeInsets.symmetric(vertical: 20),
         children: [
+          // --- LANGUAGE SWITCHER ---
           SwitchListTile(
             secondary: const Icon(Icons.language, color: AppTheme.primaryGreen),
             title: Text(lang.getText("Language", "Bahasa")),
@@ -34,12 +35,16 @@ class SettingsScreen extends StatelessWidget {
           ),
           const Divider(),
 
-          // --- SUPER ADMIN GOD MODE PANEL ---
+          // --- SUPER ADMIN PORTAL ---
+          // Only show this if they are actually the Super Admin
           if (adminProfile.isSuperAdmin) ...[
             ListTile(
               leading: const Icon(Icons.admin_panel_settings, color: Colors.blueAccent, size: 30),
-              title: const Text("Super Admin Portal", style: TextStyle(fontWeight: FontWeight.bold, color: Colors.blueAccent)),
-              subtitle: const Text("Manage Masjids & Users"),
+              title: Text(
+                lang.getText("Super Admin Portal", "Portal Super Admin"),
+                style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.blueAccent),
+              ),
+              subtitle: Text(lang.getText("Manage Masjids & Users", "Urus Masjid & Pengguna")),
               trailing: const Icon(Icons.chevron_right, color: Colors.blueAccent),
               onTap: () {
                 Navigator.push(context, MaterialPageRoute(builder: (context) => const SuperAdminScreen()));
@@ -48,28 +53,7 @@ class SettingsScreen extends StatelessWidget {
             const Divider(),
           ],
 
-          // --- REGULAR ADMIN (LOCKED) ---
-          if (isAdmin && !adminProfile.isSuperAdmin) ...[
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-              child: Text(
-                lang.getText("Admin Profile", "Profil Admin"),
-                style: const TextStyle(fontWeight: FontWeight.bold, color: AppTheme.primaryGreen),
-              ),
-            ),
-            ListTile(
-              leading: const Icon(Icons.lock, color: Colors.grey), // Changed to a lock icon
-              title: Text(lang.getText("Assigned Masjid", "Masjid Ditetapkan")),
-              subtitle: Text(
-                adminProfile.isProfileComplete 
-                  ? "${adminProfile.masjidName} (${adminProfile.state})" 
-                  : lang.getText("Contact Super Admin to assign", "Sila hubungi Super Admin")
-              ),
-              // NO onTap HERE! They are locked.
-            ),
-            const Divider(),
-          ],
-
+          // --- LOGOUT ---
           ListTile(
             leading: const Icon(Icons.logout, color: Colors.redAccent),
             title: Text(
@@ -90,13 +74,19 @@ class SettingsScreen extends StatelessWidget {
         title: Text(lang.getText("Logout", "Log Keluar")),
         content: Text(lang.getText("Are you sure?", "Adakah anda pasti?")),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(context), child: Text(lang.getText("Cancel", "Batal"))),
+          TextButton(
+            onPressed: () => Navigator.pop(context), 
+            child: Text(lang.getText("Cancel", "Batal"))
+          ),
           TextButton(
             onPressed: () {
               Navigator.pop(context);
               FirebaseAuth.instance.signOut();
             }, 
-            child: Text(lang.getText("Logout", "Log Keluar"), style: const TextStyle(color: Colors.red))
+            child: Text(
+              lang.getText("Logout", "Log Keluar"), 
+              style: const TextStyle(color: Colors.red)
+            )
           ),
         ],
       ),

@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'signup_screen.dart'; // Ensure you have created this file
+import 'package:provider/provider.dart'; // Add this
+import 'language_provider.dart'; // Add this
+import 'signup_screen.dart'; 
 import 'theme.dart';
 
 class LoginScreen extends StatefulWidget {
@@ -13,10 +15,10 @@ class LoginScreen extends StatefulWidget {
 class _LoginScreenState extends State<LoginScreen> {
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
-  final _formKey = GlobalKey<FormState>(); // For field validation
+  final _formKey = GlobalKey<FormState>(); 
   bool _isLoading = false;
 
-  Future<void> _login() async {
+  Future<void> _login(LanguageProvider lang) async {
     if (!_formKey.currentState!.validate()) return;
 
     setState(() => _isLoading = true);
@@ -25,15 +27,24 @@ class _LoginScreenState extends State<LoginScreen> {
         email: _emailController.text.trim(),
         password: _passwordController.text.trim(),
       );
-      // AuthWrapper in main.dart will automatically redirect to Home
     } on FirebaseAuthException catch (e) {
-      String errorMessage = "Login failed. Please check your credentials.";
-      if (e.code == 'user-not-found') errorMessage = "No user found with this email.";
-      if (e.code == 'wrong-password') errorMessage = "Incorrect password.";
-      
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(errorMessage), backgroundColor: Colors.red),
+      // Localized Error Messages
+      String errorMessage = lang.getText(
+        "Login failed. Please check your credentials.", 
+        "Log masuk gagal. Sila semak maklumat anda."
       );
+      
+      if (e.code == 'user-not-found') {
+        errorMessage = lang.getText("No user found with this email.", "Tiada pengguna ditemui dengan emel ini.");
+      } else if (e.code == 'wrong-password') {
+        errorMessage = lang.getText("Incorrect password.", "Kata laluan salah.");
+      }
+      
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(errorMessage), backgroundColor: Colors.red),
+        );
+      }
     } finally {
       if (mounted) setState(() => _isLoading = false);
     }
@@ -41,6 +52,8 @@ class _LoginScreenState extends State<LoginScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final lang = context.watch<LanguageProvider>();
+
     return Scaffold(
       backgroundColor: Colors.white,
       body: Center(
@@ -54,7 +67,10 @@ class _LoginScreenState extends State<LoginScreen> {
                 const Icon(Icons.mosque, size: 80, color: AppTheme.primaryGreen),
                 const SizedBox(height: 20),
                 const Text("Al-Fajr", style: TextStyle(fontSize: 32, fontWeight: FontWeight.bold)),
-                const Text("Sign in to your community", style: TextStyle(color: Colors.grey)),
+                Text(
+                  lang.getText("Sign in to your community", "Log masuk ke komuniti anda"), 
+                  style: const TextStyle(color: Colors.grey)
+                ),
                 const SizedBox(height: 40),
                 
                 // Email Field
@@ -62,11 +78,13 @@ class _LoginScreenState extends State<LoginScreen> {
                   controller: _emailController,
                   keyboardType: TextInputType.emailAddress,
                   decoration: InputDecoration(
-                    labelText: "Email",
+                    labelText: lang.getText("Email", "Emel"),
                     prefixIcon: const Icon(Icons.email_outlined),
                     border: OutlineInputBorder(borderRadius: BorderRadius.circular(15)),
                   ),
-                  validator: (val) => val!.isEmpty ? "Enter an email" : null,
+                  validator: (val) => val!.isEmpty 
+                    ? lang.getText("Enter an email", "Masukkan emel") 
+                    : null,
                 ),
                 const SizedBox(height: 15),
                 
@@ -75,11 +93,13 @@ class _LoginScreenState extends State<LoginScreen> {
                   controller: _passwordController,
                   obscureText: true,
                   decoration: InputDecoration(
-                    labelText: "Password",
+                    labelText: lang.getText("Password", "Kata Laluan"),
                     prefixIcon: const Icon(Icons.lock_outline),
                     border: OutlineInputBorder(borderRadius: BorderRadius.circular(15)),
                   ),
-                  validator: (val) => val!.length < 6 ? "Minimum 6 characters" : null,
+                  validator: (val) => val!.length < 6 
+                    ? lang.getText("Minimum 6 characters", "Minimum 6 aksara") 
+                    : null,
                 ),
                 const SizedBox(height: 30),
                 
@@ -88,14 +108,17 @@ class _LoginScreenState extends State<LoginScreen> {
                   width: double.infinity,
                   height: 60,
                   child: ElevatedButton(
-                    onPressed: _isLoading ? null : _login,
+                    onPressed: _isLoading ? null : () => _login(lang),
                     style: ElevatedButton.styleFrom(
                       backgroundColor: Colors.black,
                       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
                     ),
                     child: _isLoading 
                       ? const CircularProgressIndicator(color: Colors.white)
-                      : const Text("LOGIN", style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+                      : Text(
+                          lang.getText("LOGIN", "LOG MASUK"), 
+                          style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold)
+                        ),
                   ),
                 ),
                 
@@ -109,9 +132,12 @@ class _LoginScreenState extends State<LoginScreen> {
                       MaterialPageRoute(builder: (context) => const SignUpScreen()),
                     );
                   },
-                  child: const Text(
-                    "Don't have an account? Sign Up",
-                    style: TextStyle(color: AppTheme.primaryGreen, fontWeight: FontWeight.bold),
+                  child: Text(
+                    lang.getText(
+                      "Don't have an account? Sign Up", 
+                      "Tiada akaun? Daftar Sini"
+                    ),
+                    style: const TextStyle(color: AppTheme.primaryGreen, fontWeight: FontWeight.bold),
                   ),
                 ),
               ],

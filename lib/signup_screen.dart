@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:provider/provider.dart';
+import 'language_provider.dart';
 import 'theme.dart';
 
 class SignUpScreen extends StatefulWidget {
@@ -15,7 +17,14 @@ class _SignUpScreenState extends State<SignUpScreen> {
   final _passwordController = TextEditingController();
   bool _isLoading = false;
 
-  Future<void> _signUp() async {
+  Future<void> _signUp(LanguageProvider lang) async {
+    if (_emailController.text.isEmpty || _passwordController.text.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(lang.getText("Please fill all fields", "Sila isi semua ruangan"))),
+      );
+      return;
+    }
+
     setState(() => _isLoading = true);
     try {
       // 1. Create User in Firebase Auth
@@ -25,30 +34,37 @@ class _SignUpScreenState extends State<SignUpScreen> {
         password: _passwordController.text.trim(),
       );
 
-      // 2. Create User Document in Firestore (CRITICAL for AuthWrapper)
+      // 2. Create User Document in Firestore
       await FirebaseFirestore.instance
           .collection('users')
           .doc(userCredential.user!.uid)
           .set({
         'email': _emailController.text.trim(),
-        'role': 'user', // Default role; change to 'admin' manually in Firebase Console if needed
+        'role': 'user', 
         'createdAt': FieldValue.serverTimestamp(),
       });
 
-      // 3. Fix: Check if screen is still active before navigating
       if (!mounted) return;
 
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("Account created successfully!")),
+        SnackBar(content: Text(lang.getText("Account created successfully!", "Akaun berjaya didaftarkan!"))),
       );
       
-      // Navigate back to Login or let AuthWrapper handle it
       Navigator.pop(context);
 
     } on FirebaseAuthException catch (e) {
       if (!mounted) return;
+      
+      // Localized common errors
+      String errorMsg = e.message ?? "Registration failed";
+      if (e.code == 'email-already-in-use') {
+        errorMsg = lang.getText("This email is already registered.", "Emel ini telah pun didaftarkan.");
+      } else if (e.code == 'weak-password') {
+        errorMsg = lang.getText("The password is too weak.", "Kata laluan terlalu lemah.");
+      }
+
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(e.message ?? "Registration failed"), backgroundColor: Colors.red),
+        SnackBar(content: Text(errorMsg), backgroundColor: Colors.red),
       );
     } finally {
       if (mounted) setState(() => _isLoading = false);
@@ -57,32 +73,58 @@ class _SignUpScreenState extends State<SignUpScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final lang = context.watch<LanguageProvider>();
+
     return Scaffold(
-      appBar: AppBar(title: const Text("Sign Up")),
-      body: Padding(
+      appBar: AppBar(
+        title: Text(lang.getText("Sign Up", "Daftar Akaun")),
+        backgroundColor: AppTheme.primaryGreen,
+        foregroundColor: Colors.white,
+      ),
+      body: SingleChildScrollView(
         padding: const EdgeInsets.all(25.0),
         child: Column(
           children: [
+            const Icon(Icons.person_add_outlined, size: 80, color: AppTheme.primaryGreen),
+            const SizedBox(height: 20),
+            
             TextField(
               controller: _emailController,
-              decoration: const InputDecoration(labelText: "Email"),
+              keyboardType: TextInputType.emailAddress,
+              decoration: InputDecoration(
+                labelText: lang.getText("Email", "Emel"),
+                border: const OutlineInputBorder(),
+                prefixIcon: const Icon(Icons.email_outlined),
+              ),
             ),
             const SizedBox(height: 15),
+            
             TextField(
               controller: _passwordController,
-              decoration: const InputDecoration(labelText: "Password"),
+              decoration: InputDecoration(
+                labelText: lang.getText("Password", "Kata Laluan"),
+                border: const OutlineInputBorder(),
+                prefixIcon: const Icon(Icons.lock_outline),
+              ),
               obscureText: true,
             ),
             const SizedBox(height: 30),
+            
             SizedBox(
               width: double.infinity,
-              height: 50,
+              height: 55,
               child: ElevatedButton(
-                onPressed: _isLoading ? null : _signUp, // Prevents double-clicking
-                style: ElevatedButton.styleFrom(backgroundColor: AppTheme.primaryGreen),
+                onPressed: _isLoading ? null : () => _signUp(lang),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppTheme.primaryGreen,
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                ),
                 child: _isLoading 
                   ? const CircularProgressIndicator(color: Colors.white) 
-                  : const Text("SIGN UP", style: TextStyle(color: Colors.white)),
+                  : Text(
+                      lang.getText("CREATE ACCOUNT", "DAFTAR AKAUN"), 
+                      style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold)
+                    ),
               ),
             ),
           ],
