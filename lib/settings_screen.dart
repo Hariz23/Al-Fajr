@@ -29,7 +29,8 @@ class SettingsScreen extends StatelessWidget {
             secondary: const Icon(Icons.language, color: AppTheme.primaryGreen),
             title: Text(lang.getText("Language", "Bahasa")),
             subtitle: Text(lang.isEnglish ? "English" : "Bahasa Melayu"),
-            activeColor: AppTheme.primaryGreen,
+            activeThumbColor: AppTheme.primaryGreen, // Thumb is the moving circle
+            activeTrackColor: AppTheme.primaryGreen.withValues(alpha: 0.5), // Track is the path
             value: lang.isEnglish,
             onChanged: (bool value) => lang.toggleLanguage(),
           ),

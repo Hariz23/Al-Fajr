@@ -1,3 +1,4 @@
+import 'package:flutter/cupertino.dart';
 import 'package:just_audio/just_audio.dart';
 import 'package:just_audio_background/just_audio_background.dart';
 
@@ -38,7 +39,7 @@ class QuranAudioService {
       );
       _player.play();
     } catch (e) {
-      print("Error: $e");
+      debugPrint("Error: $e");
     }
   }
 

@@ -3,8 +3,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_qiblah/flutter_qiblah.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:permission_handler/permission_handler.dart';
-import 'package:provider/provider.dart'; // Added
-import 'language_provider.dart'; // Added
+import 'package:provider/provider.dart';
+import 'language_provider.dart';
 import 'theme.dart';
 
 class QiblahScreen extends StatefulWidget {
@@ -53,8 +53,14 @@ class _QiblahScreenState extends State<QiblahScreen> {
   }
 
   Future<void> _getLocation() async {
+    // FIX: Using the new LocationSettings instead of deprecated desiredAccuracy
     Position position = await Geolocator.getCurrentPosition(
-        desiredAccuracy: LocationAccuracy.low);
+      locationSettings: const LocationSettings(accuracy: LocationAccuracy.low),
+    );
+
+    // FIX: Guarding the async gap with mounted check
+    if (!mounted) return;
+
     setState(() {
       _currentPosition = position;
       _hasPermission = true;
@@ -63,7 +69,8 @@ class _QiblahScreenState extends State<QiblahScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final lang = Provider.of<LanguageProvider>(context);
+    // FIX: Standard context.watch for cleaner provider access
+    final lang = context.watch<LanguageProvider>();
 
     return Scaffold(
       appBar: AppBar(
@@ -122,7 +129,13 @@ class _QiblahScreenState extends State<QiblahScreen> {
                         decoration: BoxDecoration(
                           color: Colors.white,
                           borderRadius: BorderRadius.circular(20),
-                          boxShadow: [BoxShadow(color: Colors.black12, blurRadius: 15)],
+                          boxShadow: [
+                            // FIX: Replaced withOpacity with withValues
+                            BoxShadow(
+                              color: Colors.black.withValues(alpha: 0.12), 
+                              blurRadius: 15
+                            )
+                          ],
                         ),
                         child: Column(
                           children: [

@@ -64,7 +64,7 @@ class _SalatScreenState extends State<SalatScreen> {
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(30),
-      color: AppTheme.primaryGreen.withOpacity(0.05),
+      color: AppTheme.primaryGreen.withValues(alpha: 0.05),
       child: Column(
         children: [
           Text(date['readable'], style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
@@ -85,7 +85,7 @@ class _SalatScreenState extends State<SalatScreen> {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(15),
-        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 10)],
+        boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.05), blurRadius: 10)],
       ),
       child: Row(
         children: [

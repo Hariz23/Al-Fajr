@@ -220,7 +220,7 @@ class _SurahDetailViewState extends State<SurahDetailView> {
                   Container(
                     padding: const EdgeInsets.all(15),
                     decoration: BoxDecoration(
-                      color: index % 2 == 0 ? Colors.transparent : AppTheme.primaryGreen.withOpacity(0.04),
+                      color: index % 2 == 0 ? Colors.transparent : AppTheme.primaryGreen.withValues(alpha: 0.04),
                       borderRadius: BorderRadius.circular(12),
                     ),
                     child: Column(

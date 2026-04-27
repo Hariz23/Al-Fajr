@@ -88,7 +88,7 @@ class _AdminPostScreenState extends State<AdminPostScreen> {
                     border: const OutlineInputBorder(), 
                     labelText: lang.getText("State", "Negeri")
                   ),
-                  value: _selectedState,
+                  initialValue: _selectedState,
                   items: states.map((s) => DropdownMenuItem(value: s, child: Text(s))).toList(),
                   onChanged: (val) => setState(() { 
                     _selectedState = val; 
@@ -114,7 +114,7 @@ class _AdminPostScreenState extends State<AdminPostScreen> {
                       border: const OutlineInputBorder(), 
                       labelText: lang.getText("Select Masjid / Surau", "Pilih Masjid / Surau")
                     ),
-                    value: _selectedMasjid,
+                    initialValue: _selectedMasjid,
                     items: snapshot.data!.docs.map((doc) {
                       String name = doc['name'];
                       return DropdownMenuItem(value: name, child: Text(name));

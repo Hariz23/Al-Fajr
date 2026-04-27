@@ -194,7 +194,7 @@ class _SuperAdminScreenState extends State<SuperAdminScreen> {
 
   Widget _buildDropdown(String hint, List<String> items, String? value, Function(String?) onChanged, {Map<String, String>? nameMap}) {
     return DropdownButtonFormField<String>(
-      value: value,
+      initialValue: value,
       hint: Text(hint),
       decoration: InputDecoration(filled: true, fillColor: Colors.grey.shade50, border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none)),
       items: items.map((s) => DropdownMenuItem(value: s, child: Text(nameMap?[s] ?? s))).toList(),
@@ -239,7 +239,7 @@ class _SuperAdminScreenState extends State<SuperAdminScreen> {
                 return ListView.separated(
                   padding: const EdgeInsets.symmetric(horizontal: 16),
                   itemCount: snap.data!.docs.length,
-                  separatorBuilder: (_, __) => const Divider(height: 1),
+                  separatorBuilder: (_, _) => const Divider(height: 1),
                   itemBuilder: (context, index) {
                     final data = snap.data!.docs[index].data() as Map<String, dynamic>;
                     bool isSuper = data['role'] == 'super_admin';

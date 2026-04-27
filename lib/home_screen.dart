@@ -205,7 +205,7 @@ class _HomeScreenState extends State<HomeScreen> {
           Container(
             padding: const EdgeInsets.all(15),
             decoration: BoxDecoration(
-              color: Colors.white.withOpacity(0.1),
+              color: Colors.white.withValues(alpha: 0.1),
               borderRadius: BorderRadius.circular(20),
             ),
             child: Row(
@@ -240,10 +240,10 @@ class _HomeScreenState extends State<HomeScreen> {
       borderRadius: BorderRadius.circular(25),
       child: Container(
         decoration: BoxDecoration(
-          color: isSpecial ? AppTheme.primaryGreen.withOpacity(0.1) : Colors.white,
+          color: isSpecial ? AppTheme.primaryGreen.withValues(alpha: 0.1) : Colors.white,
           borderRadius: BorderRadius.circular(25),
           border: isSpecial ? Border.all(color: AppTheme.primaryGreen, width: 1) : null,
-          boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.04), blurRadius: 10, offset: const Offset(0, 4))],
+          boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.04), blurRadius: 10, offset: const Offset(0, 4))],
         ),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,

@@ -62,7 +62,7 @@ class _ZakatScreenState extends State<ZakatScreen> {
 
       // 2. SIMPANAN
       double totalBalance = 0.0;
-      for (var acc in _bankAccounts) totalBalance += _parse(acc['balance']!.text);
+      for (var acc in _bankAccounts){ totalBalance += _parse(acc['balance']!.text); }
       _zakatSimpanan = (totalBalance >= _moneyNisab) ? (totalBalance * 0.025) : 0.0;
 
       // 3. EMAS
@@ -83,7 +83,7 @@ class _ZakatScreenState extends State<ZakatScreen> {
     _otherIncomeCtrl.clear();
     _monthlyCarumanCtrl.clear();
     for (var acc in _bankAccounts) { acc['balance']!.clear(); acc['name']!.clear(); }
-    for (var item in _goldItems) item['weight']!.clear();
+    for (var item in _goldItems){ item['weight']!.clear(); }
     setState(() {
       _zakatPendapatan = 0.0;
       _zakatSimpanan = 0.0;

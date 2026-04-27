@@ -65,7 +65,7 @@ class _ZikirTabState extends State<ZikirTab> {
               decoration: BoxDecoration(
                 color: AppTheme.primaryGreen,
                 shape: BoxShape.circle,
-                boxShadow: [BoxShadow(color: AppTheme.primaryGreen.withOpacity(0.3), blurRadius: 25, offset: const Offset(0, 10))],
+                boxShadow: [BoxShadow(color: AppTheme.primaryGreen.withValues(alpha: 0.3), blurRadius: 25, offset: const Offset(0, 10))],
               ),
               child: const Center(
                 child: Text("TAP", style: TextStyle(color: Colors.white, fontSize: 28, fontWeight: FontWeight.bold)),
@@ -107,7 +107,7 @@ class DoaTab extends StatelessWidget {
           decoration: BoxDecoration(
             color: Colors.white,
             borderRadius: BorderRadius.circular(15),
-            border: Border.all(color: AppTheme.primaryGreen.withOpacity(0.1)),
+            border: Border.all(color: AppTheme.primaryGreen.withValues(alpha: 0.1)),
           ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
