@@ -15,21 +15,59 @@ class CalendarScreen extends StatefulWidget {
 }
 
 class _CalendarScreenState extends State<CalendarScreen> {
+  bool _isFilterExpanded = false;
+  String _filterMode = "State"; 
+  
   String selectedState = "All"; 
+  String selectedMosque = "All";
 
+  // Removed "All" from the list to handle it dynamically in the UI
   final List<String> malaysianStates = [
-    "All", "Johor", "Kedah", "Kelantan", "Melaka", "Negeri Sembilan", 
+    "Johor", "Kedah", "Kelantan", "Melaka", "Negeri Sembilan", 
     "Pahang", "Perak", "Perlis", "Pulau Pinang", "Sabah", "Sarawak", 
     "Selangor", "Terengganu", "W.P. Kuala Lumpur", "W.P. Labuan", "W.P. Putrajaya"
   ];
 
-  // --- SMART LINK LAUNCHER ---
-  Future<void> _launchURL(String url) async {
-    if (url.isEmpty) return;
+  List<String> dynamicMosqueList = [];
+  bool _isLoadingMosques = true;
 
+  @override
+  void initState() {
+    super.initState();
+    _fetchMosqueList();
+  }
+
+  Future<void> _fetchMosqueList() async {
+    try {
+      final snap = await FirebaseFirestore.instance.collection('masjids').get();
+      List<String> fetchedNames = [];
+      
+      for (var doc in snap.docs) {
+        if (doc.data().containsKey('name') && doc['name'].toString().trim().isNotEmpty) {
+          fetchedNames.add(doc['name']);
+        }
+      }
+      
+      fetchedNames.sort();
+
+      if (mounted) {
+        setState(() {
+          dynamicMosqueList = fetchedNames;
+          _isLoadingMosques = false;
+        });
+      }
+    } catch (e) {
+      debugPrint("Error fetching mosque list: $e");
+      if (mounted) {
+        setState(() => _isLoadingMosques = false);
+      }
+    }
+  }
+
+  Future<void> _launchURL(String url, LanguageProvider lang) async {
+    if (url.isEmpty) return;
     String trimmedUrl = url.trim();
 
-    // Fix: Add protocol if missing, otherwise launchUrl will fail
     if (!trimmedUrl.startsWith('http://') && !trimmedUrl.startsWith('https://')) {
       trimmedUrl = 'https://$trimmedUrl';
     }
@@ -37,12 +75,13 @@ class _CalendarScreenState extends State<CalendarScreen> {
     final Uri uri = Uri.parse(trimmedUrl);
 
     try {
-      // Launch in external application (Browser/YouTube app)
       if (!await launchUrl(uri, mode: LaunchMode.externalApplication)) {
-        debugPrint("Could not launch $trimmedUrl");
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text("Invalid link or no browser found.")),
+            SnackBar(content: Text(lang.getText(
+              "Invalid link or no browser found.", 
+              "Pautan tidak sah atau tiada pelayar ditemui."
+            ))),
           );
         }
       }
@@ -53,13 +92,14 @@ class _CalendarScreenState extends State<CalendarScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final lang = Provider.of<LanguageProvider>(context);
+    final lang = context.watch<LanguageProvider>();
 
-    // Dynamic Query
     Query query = FirebaseFirestore.instance.collection('events');
     
-    if (selectedState != "All") {
+    if (_filterMode == "State" && selectedState != "All") {
       query = query.where('state', isEqualTo: selectedState);
+    } else if (_filterMode == "Mosque" && selectedMosque != "All") {
+      query = query.where('locationName', isEqualTo: selectedMosque);
     }
     
     query = query.orderBy('eventDate', descending: false);
@@ -72,7 +112,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
       ),
       body: CustomScrollView(
         slivers: [
-          SliverToBoxAdapter(child: _buildFilterBar(lang)),
+          SliverToBoxAdapter(child: _buildCollapsibleFilterBar(lang)),
 
           SliverToBoxAdapter(
             child: Padding(
@@ -102,7 +142,12 @@ class _CalendarScreenState extends State<CalendarScreen> {
             stream: query.snapshots(),
             builder: (context, snapshot) {
               if (snapshot.hasError) {
-                return const SliverFillRemaining(child: Center(child: Text("Error loading events")));
+                return SliverFillRemaining(
+                  child: Center(child: Text(lang.getText(
+                    "Error loading events", 
+                    "Ralat memuatkan acara"
+                  )))
+                );
               }
               if (snapshot.connectionState == ConnectionState.waiting) {
                 return const SliverToBoxAdapter(child: Center(child: CircularProgressIndicator()));
@@ -124,13 +169,11 @@ class _CalendarScreenState extends State<CalendarScreen> {
                     (context, index) {
                       var data = docs[index].data() as Map<String, dynamic>;
 
-                      // Null-safe Date Parsing
                       final dynamic rawDate = data['eventDate'] ?? data['date'];
                       DateTime eventDate = (rawDate is Timestamp) ? rawDate.toDate() : DateTime.now();
 
-                      // Reverted field names from original schema
-                      String title = data['title'] ?? "No Title";
-                      String location = data['locationName'] ?? data['masjidName'] ?? "Unknown Location";
+                      String title = data['title'] ?? lang.getText("No Title", "Tiada Tajuk");
+                      String location = data['locationName'] ?? lang.getText("Unknown Location", "Lokasi Tidak Diketahui");
                       String link = data['liveLink'] ?? data['link'] ?? "";
 
                       return Card(
@@ -139,9 +182,9 @@ class _CalendarScreenState extends State<CalendarScreen> {
                         elevation: 2,
                         child: ListTile(
                           contentPadding: const EdgeInsets.all(12),
-                          leading: CircleAvatar(
+                          leading: const CircleAvatar(
                             backgroundColor: AppTheme.primaryGreen,
-                            child: const Icon(Icons.mosque, color: Colors.white, size: 20),
+                            child: Icon(Icons.mosque, color: Colors.white, size: 20),
                           ),
                           title: Text(title, style: const TextStyle(fontWeight: FontWeight.bold)),
                           subtitle: Column(
@@ -164,7 +207,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
                                 ),
                             ],
                           ),
-                          onTap: link.isNotEmpty ? () => _launchURL(link) : null,
+                          onTap: link.isNotEmpty ? () => _launchURL(link, lang) : null,
                         ),
                       );
                     },
@@ -174,37 +217,100 @@ class _CalendarScreenState extends State<CalendarScreen> {
               );
             },
           ),
-          
           const SliverToBoxAdapter(child: SizedBox(height: 50)),
         ],
       ),
     );
   }
 
-  Widget _buildFilterBar(LanguageProvider lang) {
+  Widget _buildCollapsibleFilterBar(LanguageProvider lang) {
+    String allText = lang.getText("All", "Semua");
+
     return Container(
-      padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 15),
       color: Colors.grey[100],
-      child: SingleChildScrollView(
-        scrollDirection: Axis.horizontal,
-        child: Row(
-          children: malaysianStates.map((stateName) {
-            bool isSelected = selectedState == stateName;
-            return Padding(
-              padding: const EdgeInsets.only(right: 8.0),
-              child: ChoiceChip(
-                label: Text(stateName),
-                selected: isSelected,
-                selectedColor: AppTheme.primaryGreen,
-                labelStyle: TextStyle(
-                  color: isSelected ? Colors.white : Colors.black,
-                  fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
-                ),
-                onSelected: (val) => setState(() => selectedState = stateName),
+      child: Column(
+        children: [
+          ListTile(
+            title: Text(
+              lang.getText("Filter Events", "Tapis Acara"),
+              style: const TextStyle(fontWeight: FontWeight.bold),
+            ),
+            trailing: Icon(_isFilterExpanded ? Icons.expand_less : Icons.expand_more),
+            onTap: () => setState(() => _isFilterExpanded = !_isFilterExpanded),
+          ),
+          
+          AnimatedCrossFade(
+            firstChild: const SizedBox(width: double.infinity, height: 0),
+            secondChild: Padding(
+              padding: const EdgeInsets.only(bottom: 15.0),
+              child: Column(
+                children: [
+                  SegmentedButton<String>(
+                    segments: [
+                      ButtonSegment(value: "State", label: Text(lang.getText("By State", "Negeri"))),
+                      ButtonSegment(value: "Mosque", label: Text(lang.getText("By Mosque", "Masjid"))),
+                    ],
+                    selected: {_filterMode},
+                    onSelectionChanged: (newSelection) {
+                      setState(() {
+                        _filterMode = newSelection.first;
+                        selectedState = "All";
+                        selectedMosque = "All";
+                      });
+                    },
+                  ),
+                  
+                  const SizedBox(height: 15),
+
+                  if (_filterMode == "Mosque" && _isLoadingMosques)
+                    const Center(child: CircularProgressIndicator())
+                  else
+                    SingleChildScrollView(
+                      scrollDirection: Axis.horizontal,
+                      padding: const EdgeInsets.symmetric(horizontal: 15),
+                      child: Row(
+                        children: [
+                          // Explicit "All" chip with dynamic translation
+                          _buildFilterChip(allText, "All", lang),
+                          
+                          ...(_filterMode == "State" ? malaysianStates : dynamicMosqueList)
+                              .map((name) => _buildFilterChip(name, name, lang)),
+                        ],
+                      ),
+                    ),
+                ],
               ),
-            );
-          }).toList(),
+            ),
+            crossFadeState: _isFilterExpanded ? CrossFadeState.showSecond : CrossFadeState.showFirst,
+            duration: const Duration(milliseconds: 250),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildFilterChip(String label, String value, LanguageProvider lang) {
+    bool isSelected = (_filterMode == "State" ? selectedState : selectedMosque) == value;
+    
+    return Padding(
+      padding: const EdgeInsets.only(right: 8.0),
+      child: ChoiceChip(
+        label: Text(label),
+        selected: isSelected,
+        selectedColor: AppTheme.primaryGreen,
+        labelStyle: TextStyle(
+          color: isSelected ? Colors.white : Colors.black,
+          fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
         ),
+        onSelected: (val) {
+          setState(() {
+            if (_filterMode == "State") {
+              selectedState = value;
+            } else {
+              selectedMosque = value;
+            }
+          });
+        },
       ),
     );
   }
