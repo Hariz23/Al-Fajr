@@ -2,21 +2,21 @@ import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:provider/provider.dart';
 import 'language_provider.dart';
-import 'admin_profile_provider.dart';
 import 'theme.dart';
 import 'super_admin_screen.dart';
 
 class SettingsScreen extends StatelessWidget {
-  final bool isAdmin; 
-  const SettingsScreen({super.key, required this.isAdmin});
+  final String role; 
+  const SettingsScreen({super.key, required this.role});
 
   @override
   Widget build(BuildContext context) {
     final lang = context.watch<LanguageProvider>();
-    final adminProfile = context.watch<AdminProfileProvider>();
+    // Strictly check for super_admin role
+    final bool isSuperAdmin = role == 'super_admin';
 
     return Scaffold(
-      appBar: AppBar(
+      appBar: AppBar( // Fixed: was app_bar
         title: Text(lang.getText("Settings", "Tetapan")),
         backgroundColor: AppTheme.primaryGreen,
         foregroundColor: Colors.white,
@@ -29,16 +29,15 @@ class SettingsScreen extends StatelessWidget {
             secondary: const Icon(Icons.language, color: AppTheme.primaryGreen),
             title: Text(lang.getText("Language", "Bahasa")),
             subtitle: Text(lang.isEnglish ? "English" : "Bahasa Melayu"),
-            activeThumbColor: AppTheme.primaryGreen, // Thumb is the moving circle
-            activeTrackColor: AppTheme.primaryGreen.withValues(alpha: 0.5), // Track is the path
+            activeThumbColor: AppTheme.primaryGreen,
+            activeTrackColor: AppTheme.primaryGreen.withValues(alpha: 0.5),
             value: lang.isEnglish,
             onChanged: (bool value) => lang.toggleLanguage(),
           ),
           const Divider(),
 
           // --- SUPER ADMIN PORTAL ---
-          // Only show this if they are actually the Super Admin
-          if (adminProfile.isSuperAdmin) ...[
+          if (isSuperAdmin) ...[
             ListTile(
               leading: const Icon(Icons.admin_panel_settings, color: Colors.blueAccent, size: 30),
               title: Text(

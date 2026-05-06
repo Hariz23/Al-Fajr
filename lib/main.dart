@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:provider/provider.dart';
 import 'language_provider.dart';
@@ -50,26 +49,13 @@ class AuthWrapper extends StatelessWidget {
         if (snapshot.connectionState == ConnectionState.waiting) {
           return const Scaffold(body: Center(child: CircularProgressIndicator()));
         }
+        
+        // If the user is authenticated, send them to the Dashboard
         if (snapshot.hasData) {
-          return StreamBuilder<DocumentSnapshot>(
-            stream: FirebaseFirestore.instance.collection('users').doc(snapshot.data!.uid).snapshots(),
-            builder: (context, roleSnapshot) {
-              if (roleSnapshot.connectionState == ConnectionState.waiting) {
-                return const Scaffold(body: Center(child: CircularProgressIndicator()));
-              }
-              
-              bool isAdmin = false;
-              if (roleSnapshot.hasData && roleSnapshot.data!.exists) {
-                final data = roleSnapshot.data!.data() as Map<String, dynamic>?;
-                if (data != null) {
-                  String role = data['role'] ?? 'user';
-                  isAdmin = role == 'admin' || role == 'super_admin';
-                }
-              }
-              return MainDashboard(isAdmin: isAdmin);
-            },
-          );
+          return const MainDashboard(); 
         }
+        
+        // Otherwise, show the Login Screen
         return const LoginScreen();
       },
     );
