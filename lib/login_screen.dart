@@ -1,8 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:provider/provider.dart'; // Add this
-import 'language_provider.dart'; // Add this
-import 'signup_screen.dart'; 
+import 'package:cloud_firestore/cloud_firestore.dart'; // Needed for name lookup
+import 'package:provider/provider.dart';
+import 'language_provider.dart';
+import 'signup_screen.dart';
 import 'theme.dart';
 
 class LoginScreen extends StatefulWidget {
@@ -13,7 +14,7 @@ class LoginScreen extends StatefulWidget {
 }
 
 class _LoginScreenState extends State<LoginScreen> {
-  final _emailController = TextEditingController();
+  final _identifierController = TextEditingController(); // Handles Email or Name
   final _passwordController = TextEditingController();
   final _formKey = GlobalKey<FormState>(); 
   bool _isLoading = false;
@@ -23,19 +24,35 @@ class _LoginScreenState extends State<LoginScreen> {
 
     setState(() => _isLoading = true);
     try {
+      String loginEmail = _identifierController.text.trim();
+
+      // If the input is not an email format, we search for the Name in Firestore
+      if (!loginEmail.contains('@')) {
+        final userQuery = await FirebaseFirestore.instance
+            .collection('users')
+            .where('name', isEqualTo: loginEmail)
+            .limit(1)
+            .get();
+
+        if (userQuery.docs.isEmpty) {
+          throw FirebaseAuthException(code: 'user-not-found');
+        }
+        // Retrieve the actual email associated with that name
+        loginEmail = userQuery.docs.first.get('email');
+      }
+
       await FirebaseAuth.instance.signInWithEmailAndPassword(
-        email: _emailController.text.trim(),
+        email: loginEmail,
         password: _passwordController.text.trim(),
       );
     } on FirebaseAuthException catch (e) {
-      // Localized Error Messages
       String errorMessage = lang.getText(
         "Login failed. Please check your credentials.", 
         "Log masuk gagal. Sila semak maklumat anda."
       );
       
       if (e.code == 'user-not-found') {
-        errorMessage = lang.getText("No user found with this email.", "Tiada pengguna ditemui dengan emel ini.");
+        errorMessage = lang.getText("User not found.", "Pengguna tidak ditemui.");
       } else if (e.code == 'wrong-password') {
         errorMessage = lang.getText("Incorrect password.", "Kata laluan salah.");
       }
@@ -73,22 +90,19 @@ class _LoginScreenState extends State<LoginScreen> {
                 ),
                 const SizedBox(height: 40),
                 
-                // Email Field
                 TextFormField(
-                  controller: _emailController,
-                  keyboardType: TextInputType.emailAddress,
+                  controller: _identifierController,
                   decoration: InputDecoration(
-                    labelText: lang.getText("Email", "Emel"),
-                    prefixIcon: const Icon(Icons.email_outlined),
+                    labelText: lang.getText("Email or Name", "Emel atau Nama"),
+                    prefixIcon: const Icon(Icons.person_outline),
                     border: OutlineInputBorder(borderRadius: BorderRadius.circular(15)),
                   ),
                   validator: (val) => val!.isEmpty 
-                    ? lang.getText("Enter an email", "Masukkan emel") 
+                    ? lang.getText("Enter email or name", "Masukkan emel atau nama") 
                     : null,
                 ),
                 const SizedBox(height: 15),
                 
-                // Password Field
                 TextFormField(
                   controller: _passwordController,
                   obscureText: true,
@@ -103,7 +117,6 @@ class _LoginScreenState extends State<LoginScreen> {
                 ),
                 const SizedBox(height: 30),
                 
-                // Login Button
                 SizedBox(
                   width: double.infinity,
                   height: 60,
@@ -124,19 +137,12 @@ class _LoginScreenState extends State<LoginScreen> {
                 
                 const SizedBox(height: 20),
                 
-                // Link to SignUp
                 TextButton(
                   onPressed: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(builder: (context) => const SignUpScreen()),
-                    );
+                    Navigator.push(context, MaterialPageRoute(builder: (context) => const SignUpScreen()));
                   },
                   child: Text(
-                    lang.getText(
-                      "Don't have an account? Sign Up", 
-                      "Tiada akaun? Daftar Sini"
-                    ),
+                    lang.getText("Don't have an account? Sign Up", "Tiada akaun? Daftar Sini"),
                     style: const TextStyle(color: AppTheme.primaryGreen, fontWeight: FontWeight.bold),
                   ),
                 ),

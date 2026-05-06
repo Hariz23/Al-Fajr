@@ -13,12 +13,13 @@ class SignUpScreen extends StatefulWidget {
 }
 
 class _SignUpScreenState extends State<SignUpScreen> {
+  final _nameController = TextEditingController();
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
   bool _isLoading = false;
 
   Future<void> _signUp(LanguageProvider lang) async {
-    if (_emailController.text.isEmpty || _passwordController.text.isEmpty) {
+    if (_nameController.text.isEmpty || _emailController.text.isEmpty || _passwordController.text.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text(lang.getText("Please fill all fields", "Sila isi semua ruangan"))),
       );
@@ -27,42 +28,30 @@ class _SignUpScreenState extends State<SignUpScreen> {
 
     setState(() => _isLoading = true);
     try {
-      // 1. Create User in Firebase Auth
-      UserCredential userCredential = await FirebaseAuth.instance
-          .createUserWithEmailAndPassword(
+      UserCredential userCredential = await FirebaseAuth.instance.createUserWithEmailAndPassword(
         email: _emailController.text.trim(),
         password: _passwordController.text.trim(),
       );
 
-      // 2. Create User Document in Firestore
+      // Create User Document with Name
       await FirebaseFirestore.instance
           .collection('users')
           .doc(userCredential.user!.uid)
           .set({
+        'name': _nameController.text.trim(),
         'email': _emailController.text.trim(),
         'role': 'user', 
         'createdAt': FieldValue.serverTimestamp(),
       });
 
       if (!mounted) return;
-
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(lang.getText("Account created successfully!", "Akaun berjaya didaftarkan!"))),
-      );
-      
       Navigator.pop(context);
 
     } on FirebaseAuthException catch (e) {
-      if (!mounted) return;
-      
-      // Localized common errors
-      String errorMsg = e.message ?? "Registration failed";
+      String errorMsg = lang.getText("Registration failed", "Pendaftaran gagal");
       if (e.code == 'email-already-in-use') {
-        errorMsg = lang.getText("This email is already registered.", "Emel ini telah pun didaftarkan.");
-      } else if (e.code == 'weak-password') {
-        errorMsg = lang.getText("The password is too weak.", "Kata laluan terlalu lemah.");
+        errorMsg = lang.getText("Email already registered.", "Emel telah berdaftar.");
       }
-
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text(errorMsg), backgroundColor: Colors.red),
       );
@@ -87,6 +76,16 @@ class _SignUpScreenState extends State<SignUpScreen> {
           children: [
             const Icon(Icons.person_add_outlined, size: 80, color: AppTheme.primaryGreen),
             const SizedBox(height: 20),
+            
+            TextField(
+              controller: _nameController,
+              decoration: InputDecoration(
+                labelText: lang.getText("Full Name", "Nama Penuh"),
+                border: const OutlineInputBorder(),
+                prefixIcon: const Icon(Icons.person_outline),
+              ),
+            ),
+            const SizedBox(height: 15),
             
             TextField(
               controller: _emailController,

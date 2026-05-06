@@ -92,9 +92,7 @@ class _HomeScreenState extends State<HomeScreen> {
       if (response.statusCode == 200) {
         final data = json.decode(response.body)['data']['timings'];
         if (mounted) {
-          setState(() {
-            prayerTimes = data;
-          });
+          setState(() => prayerTimes = data);
           final lang = Provider.of<LanguageProvider>(context, listen: false);
           Map<String, String> formattedTimes = (data as Map<String, dynamic>).map(
             (key, value) => MapEntry(key, value.toString()),
@@ -135,7 +133,10 @@ class _HomeScreenState extends State<HomeScreen> {
     return StreamBuilder<DocumentSnapshot>(
       stream: FirebaseFirestore.instance.collection('users').doc(user?.uid).snapshots(),
       builder: (context, snapshot) {
+        if (!snapshot.hasData) return const Center(child: CircularProgressIndicator());
+        
         final userData = snapshot.data?.data() as Map<String, dynamic>?;
+        final String? userName = userData?['name'];
         final String? liveMasjidName = userData?['masjidName'];
         final String? liveMasjidId = userData?['masjidID'];
         final String role = userData?['role'] ?? 'user';
@@ -143,7 +144,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
         return Column(
           children: [
-            _buildHeader(lang, liveMasjidName),
+            _buildHeader(lang, liveMasjidName, userName),
             Expanded(
               child: Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 20.0),
@@ -184,8 +185,12 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  Widget _buildHeader(LanguageProvider lang, String? masjidName) {
-    String mainTitle = (masjidName != null && masjidName.isNotEmpty) 
+  Widget _buildHeader(LanguageProvider lang, String? masjidName, String? userName) {
+    String greeting = userName != null 
+        ? "Assalamu Alaikum, $userName" 
+        : "Assalamu Alaikum,";
+    
+    String subTitle = (masjidName != null && masjidName.isNotEmpty) 
         ? masjidName 
         : lang.getText("Welcome to Hijrah", "Selamat Datang ke Hijrah");
 
@@ -199,8 +204,8 @@ class _HomeScreenState extends State<HomeScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(lang.getText("Assalamu Alaikum,", "Assalamu Alaikum,"), style: const TextStyle(color: Colors.white70, fontSize: 16)),
-          Text(mainTitle, style: const TextStyle(color: Colors.white, fontSize: 24, fontWeight: FontWeight.bold)),
+          Text(greeting, style: const TextStyle(color: Colors.white, fontSize: 22, fontWeight: FontWeight.bold)),
+          Text(subTitle, style: const TextStyle(color: Colors.white70, fontSize: 14)),
           const SizedBox(height: 25),
           Container(
             padding: const EdgeInsets.all(15),
