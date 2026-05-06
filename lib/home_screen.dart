@@ -187,7 +187,7 @@ class _HomeScreenState extends State<HomeScreen> {
   Widget _buildHeader(LanguageProvider lang, String? masjidName) {
     String mainTitle = (masjidName != null && masjidName.isNotEmpty) 
         ? masjidName 
-        : lang.getText("Welcome to Al-Fajr", "Selamat Datang ke Al-Fajr");
+        : lang.getText("Welcome to Hijrah", "Selamat Datang ke Hijrah");
 
     return Container(
       padding: const EdgeInsets.only(top: 60, bottom: 30, left: 25, right: 25),

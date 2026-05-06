@@ -66,7 +66,7 @@ class _LoginScreenState extends State<LoginScreen> {
               children: [
                 const Icon(Icons.mosque, size: 80, color: AppTheme.primaryGreen),
                 const SizedBox(height: 20),
-                const Text("Al-Fajr", style: TextStyle(fontSize: 32, fontWeight: FontWeight.bold)),
+                const Text("Hijrah", style: TextStyle(fontSize: 32, fontWeight: FontWeight.bold)),
                 Text(
                   lang.getText("Sign in to your community", "Log masuk ke komuniti anda"), 
                   style: const TextStyle(color: Colors.grey)
