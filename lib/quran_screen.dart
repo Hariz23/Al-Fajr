@@ -2,17 +2,10 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:provider/provider.dart';
-import 'package:just_audio/just_audio.dart'; // Ensure this is in pubspec.yaml
+import 'package:just_audio/just_audio.dart';
 import 'language_provider.dart';
 import 'surah_data.dart'; 
 import 'theme.dart';
-
-// --- RECITER MODEL ---
-class Reciter {
-  final String name;
-  final String id;
-  Reciter({required this.name, required this.id});
-}
 
 class QuranScreen extends StatefulWidget {
   const QuranScreen({super.key});
@@ -58,17 +51,16 @@ class _QuranScreenState extends State<QuranScreen> {
 
               return ListTile(
                 leading: CircleAvatar(
-                  backgroundColor: AppTheme.primaryGreen,
-                  child: Text("$number", style: const TextStyle(color: Colors.white, fontSize: 12)),
+                  backgroundColor: AppTheme.primaryGreen.withOpacity(0.1),
+                  child: Text("$number", style: const TextStyle(color: AppTheme.primaryGreen, fontWeight: FontWeight.bold)),
                 ),
                 title: Text(surah['englishName'], style: const TextStyle(fontWeight: FontWeight.bold)),
                 subtitle: Text(
                   lang.isEnglish 
                       ? surah['englishNameTranslation'] 
                       : SurahData.malayNames[number] ?? "Terjemahan",
-                  style: const TextStyle(fontSize: 13, color: Colors.grey),
                 ),
-                trailing: Text(surah['name'], style: const TextStyle(fontSize: 20, fontFamily: 'Arabic')),
+                trailing: Text(surah['name'], style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
                 onTap: () {
                   Navigator.push(
                     context,
@@ -89,7 +81,6 @@ class _QuranScreenState extends State<QuranScreen> {
   }
 }
 
-// --- SURAH DETAIL VIEW WITH AUDIO ---
 class SurahDetailView extends StatefulWidget {
   final int surahNumber;
   final String surahName;
@@ -102,22 +93,17 @@ class SurahDetailView extends StatefulWidget {
 
 class _SurahDetailViewState extends State<SurahDetailView> {
   final AudioPlayer _audioPlayer = AudioPlayer();
-  
-  // Malaysian Recommended Reciters
-  final List<Reciter> _reciters = [
-    Reciter(name: "Mishary Alafasy", id: "ar.alafasy"),
-    Reciter(name: "Abdullah Al-Matrood", id: "ar.almatrood"),
-    Reciter(name: "Saad Al-Ghamdi", id: "ar.saadghamidi"),
-    Reciter(name: "Maher Al-Muaiqly", id: "ar.mahermuaiqly"),
-  ];
-
-  late Reciter _selectedReciter;
   int? _playingAyahIndex;
 
   @override
   void initState() {
     super.initState();
-    _selectedReciter = _reciters[0];
+    // Reset play icon when audio finishes
+    _audioPlayer.playerStateStream.listen((state) {
+      if (state.processingState == ProcessingState.completed) {
+        if (mounted) setState(() => _playingAyahIndex = null);
+      }
+    });
   }
 
   @override
@@ -129,23 +115,33 @@ class _SurahDetailViewState extends State<SurahDetailView> {
   Future<Map<String, dynamic>> fetchAyahs(bool isEnglish) async {
     final edition = isEnglish ? "en.asad" : "ms.basmeih";
     final url = 'https://api.alquran.cloud/v1/surah/${widget.surahNumber}/editions/quran-uthmani,$edition';
-    
     final response = await http.get(Uri.parse(url));
-    if (response.statusCode == 200) {
-      return json.decode(response.body);
-    } else {
-      throw Exception('Failed to load verses');
-    }
+    if (response.statusCode == 200) return json.decode(response.body);
+    throw Exception('Failed to load verses');
   }
 
   Future<void> _playAudio(int globalAyahNumber, int index) async {
     try {
+      if (_playingAyahIndex == index && _audioPlayer.playing) {
+        await _audioPlayer.pause();
+        setState(() => _playingAyahIndex = null);
+        return;
+      }
+
       setState(() => _playingAyahIndex = index);
-      final url = "https://cdn.islamic.network/quran/audio/128/${_selectedReciter.id}/$globalAyahNumber.mp3";
+      
+      // Hardcoded stable reciter: Mishary Alafasy
+      final url = "https://cdn.islamic.network/quran/audio/128/ar.alafasy/$globalAyahNumber.mp3";
+      
       await _audioPlayer.setUrl(url);
       _audioPlayer.play();
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Audio Error")));
+      if (mounted) {
+        setState(() => _playingAyahIndex = null);
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text("Audio currently unavailable.")),
+        );
+      }
     }
   }
 
@@ -158,32 +154,11 @@ class _SurahDetailViewState extends State<SurahDetailView> {
         title: Text(widget.surahName),
         backgroundColor: AppTheme.primaryGreen,
         foregroundColor: Colors.white,
-        actions: [
-          // RECITER SELECTION DROPDOWN
-          DropdownButton<Reciter>(
-            underline: const SizedBox(),
-            icon: const Icon(Icons.mic, color: Colors.white),
-            onChanged: (Reciter? newValue) {
-              setState(() {
-                _selectedReciter = newValue!;
-              });
-            },
-            items: _reciters.map<DropdownMenuItem<Reciter>>((Reciter value) {
-              return DropdownMenuItem<Reciter>(
-                value: value,
-                child: Text(value.name, style: const TextStyle(color: Colors.black)),
-              );
-            }).toList(),
-          ),
-          const SizedBox(width: 10),
-        ],
       ),
       body: FutureBuilder<Map<String, dynamic>>(
         future: fetchAyahs(lang.isEnglish),
         builder: (context, snapshot) {
-          if (snapshot.connectionState == ConnectionState.waiting) {
-            return const Center(child: CircularProgressIndicator());
-          }
+          if (snapshot.connectionState == ConnectionState.waiting) return const Center(child: CircularProgressIndicator());
           if (snapshot.hasError) return Center(child: Text("Error: ${snapshot.error}"));
           
           final arabicAyahs = snapshot.data!['data'][0]['ayahs'];
@@ -196,20 +171,14 @@ class _SurahDetailViewState extends State<SurahDetailView> {
               if (index == 0) {
                 if (widget.surahNumber == 9 || widget.surahNumber == 1) return const SizedBox.shrink();
                 return const Padding(
-                  padding: EdgeInsets.symmetric(vertical: 25),
-                  child: Center(
-                    child: Text(
-                      "بِسْمِ ٱللَّهِ ٱلرَّحْمَٰنِ ٱلرَّحِيمِ",
-                      style: TextStyle(fontSize: 30, color: AppTheme.primaryGreen),
-                    ),
-                  ),
+                  padding: EdgeInsets.symmetric(vertical: 20),
+                  child: Center(child: Text("بِسْمِ ٱللَّهِ ٱلرَّحْمَٰنِ ٱلرَّحِيمِ", style: TextStyle(fontSize: 28, color: AppTheme.primaryGreen))),
                 );
               }
 
               final arabic = arabicAyahs[index - 1];
               final translation = translatedAyahs[index - 1];
               String arabicText = arabic['text'];
-
               if (widget.surahNumber != 1 && index == 1) {
                 arabicText = arabicText.replaceFirst("بِسْمِ ٱللَّهِ ٱلرَّحْمَٰنِ ٱلرَّحِيمِ", "");
               }
@@ -220,43 +189,31 @@ class _SurahDetailViewState extends State<SurahDetailView> {
                   Container(
                     padding: const EdgeInsets.all(15),
                     decoration: BoxDecoration(
-                      color: index % 2 == 0 ? Colors.transparent : AppTheme.primaryGreen.withValues(alpha: 0.04),
+                      color: index % 2 == 0 ? Colors.transparent : AppTheme.primaryGreen.withOpacity(0.04),
                       borderRadius: BorderRadius.circular(12),
                     ),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.end,
                       children: [
-                        // Verse Action Bar (Play Button)
                         Row(
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
-                            CircleAvatar(
-                              radius: 14,
-                              backgroundColor: Colors.grey[200],
-                              child: Text("${arabic['numberInSurah']}", style: const TextStyle(fontSize: 10, color: Colors.black)),
-                            ),
+                            Text("#${arabic['numberInSurah']}", style: TextStyle(color: Colors.grey[600], fontSize: 12)),
                             IconButton(
                               icon: Icon(
                                 _playingAyahIndex == index ? Icons.pause_circle_filled : Icons.play_circle_fill,
                                 color: AppTheme.primaryGreen,
+                                size: 30,
                               ),
                               onPressed: () => _playAudio(arabic['number'], index),
                             ),
                           ],
                         ),
-                        Text(
-                          arabicText,
-                          textAlign: TextAlign.right,
-                          style: const TextStyle(fontSize: 26, height: 2, fontWeight: FontWeight.w600),
-                        ),
-                        const SizedBox(height: 15),
+                        Text(arabicText, textAlign: TextAlign.right, style: const TextStyle(fontSize: 26, height: 1.8)),
+                        const SizedBox(height: 12),
                         Align(
                           alignment: Alignment.centerLeft,
-                          child: Text(
-                            translation['text'],
-                            textAlign: TextAlign.left,
-                            style: TextStyle(fontSize: 15, color: Colors.grey[800], height: 1.5),
-                          ),
+                          child: Text(translation['text'], style: TextStyle(fontSize: 14, color: Colors.grey[800], height: 1.4)),
                         ),
                       ],
                     ),
