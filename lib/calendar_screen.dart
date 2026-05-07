@@ -17,11 +17,9 @@ class CalendarScreen extends StatefulWidget {
 class _CalendarScreenState extends State<CalendarScreen> {
   bool _isFilterExpanded = false;
   String _filterMode = "State"; 
-  
   String selectedState = "All"; 
   String selectedMosque = "All";
 
-  // Removed "All" from the list to handle it dynamically in the UI
   final List<String> malaysianStates = [
     "Johor", "Kedah", "Kelantan", "Melaka", "Negeri Sembilan", 
     "Pahang", "Perak", "Perlis", "Pulau Pinang", "Sabah", "Sarawak", 
@@ -41,15 +39,12 @@ class _CalendarScreenState extends State<CalendarScreen> {
     try {
       final snap = await FirebaseFirestore.instance.collection('masjids').get();
       List<String> fetchedNames = [];
-      
       for (var doc in snap.docs) {
         if (doc.data().containsKey('name') && doc['name'].toString().trim().isNotEmpty) {
           fetchedNames.add(doc['name']);
         }
       }
-      
       fetchedNames.sort();
-
       if (mounted) {
         setState(() {
           dynamicMosqueList = fetchedNames;
@@ -57,36 +52,27 @@ class _CalendarScreenState extends State<CalendarScreen> {
         });
       }
     } catch (e) {
-      debugPrint("Error fetching mosque list: $e");
       if (mounted) {
-        setState(() => _isLoadingMosques = false);
+        setState(() {
+          _isLoadingMosques = false;
+        });
       }
     }
   }
 
   Future<void> _launchURL(String url, LanguageProvider lang) async {
-    if (url.isEmpty) return;
+    if (url.isEmpty) {
+      return;
+    }
     String trimmedUrl = url.trim();
-
-    if (!trimmedUrl.startsWith('http://') && !trimmedUrl.startsWith('https://')) {
+    if (!trimmedUrl.startsWith('http')) {
       trimmedUrl = 'https://$trimmedUrl';
     }
-
     final Uri uri = Uri.parse(trimmedUrl);
-
     try {
-      if (!await launchUrl(uri, mode: LaunchMode.externalApplication)) {
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text(lang.getText(
-              "Invalid link or no browser found.", 
-              "Pautan tidak sah atau tiada pelayar ditemui."
-            ))),
-          );
-        }
-      }
+      await launchUrl(uri, mode: LaunchMode.externalApplication);
     } catch (e) {
-      debugPrint("Launch Error: $e");
+      debugPrint("Error launching URL: $e");
     }
   }
 
@@ -94,8 +80,15 @@ class _CalendarScreenState extends State<CalendarScreen> {
   Widget build(BuildContext context) {
     final lang = context.watch<LanguageProvider>();
 
+    // Logic to hide past events
+    DateTime now = DateTime.now();
+    DateTime startOfToday = DateTime(now.year, now.month, now.day);
+
     Query query = FirebaseFirestore.instance.collection('events');
     
+    // Applying the auto-hide filter
+    query = query.where('eventDate', isGreaterThanOrEqualTo: startOfToday);
+
     if (_filterMode == "State" && selectedState != "All") {
       query = query.where('state', isEqualTo: selectedState);
     } else if (_filterMode == "Mosque" && selectedMosque != "All") {
@@ -113,7 +106,6 @@ class _CalendarScreenState extends State<CalendarScreen> {
       body: CustomScrollView(
         slivers: [
           SliverToBoxAdapter(child: _buildCollapsibleFilterBar(lang)),
-
           SliverToBoxAdapter(
             child: Padding(
               padding: const EdgeInsets.all(16.0),
@@ -127,7 +119,6 @@ class _CalendarScreenState extends State<CalendarScreen> {
               ),
             ),
           ),
-
           SliverToBoxAdapter(
             child: Padding(
               padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
@@ -137,16 +128,12 @@ class _CalendarScreenState extends State<CalendarScreen> {
               ),
             ),
           ),
-
           StreamBuilder<QuerySnapshot>(
             stream: query.snapshots(),
             builder: (context, snapshot) {
               if (snapshot.hasError) {
-                return SliverFillRemaining(
-                  child: Center(child: Text(lang.getText(
-                    "Error loading events", 
-                    "Ralat memuatkan acara"
-                  )))
+                return const SliverToBoxAdapter(
+                  child: Center(child: Text("Error: Index required. Check console link.")),
                 );
               }
               if (snapshot.connectionState == ConnectionState.waiting) {
@@ -154,7 +141,6 @@ class _CalendarScreenState extends State<CalendarScreen> {
               }
 
               final docs = snapshot.data!.docs;
-
               if (docs.isEmpty) {
                 return SliverFillRemaining(
                   hasScrollBody: false,
@@ -168,13 +154,8 @@ class _CalendarScreenState extends State<CalendarScreen> {
                   delegate: SliverChildBuilderDelegate(
                     (context, index) {
                       var data = docs[index].data() as Map<String, dynamic>;
-
                       final dynamic rawDate = data['eventDate'] ?? data['date'];
                       DateTime eventDate = (rawDate is Timestamp) ? rawDate.toDate() : DateTime.now();
-
-                      String title = data['title'] ?? lang.getText("No Title", "Tiada Tajuk");
-                      String location = data['locationName'] ?? lang.getText("Unknown Location", "Lokasi Tidak Diketahui");
-                      String link = data['liveLink'] ?? data['link'] ?? "";
 
                       return Card(
                         margin: const EdgeInsets.only(bottom: 12),
@@ -186,28 +167,14 @@ class _CalendarScreenState extends State<CalendarScreen> {
                             backgroundColor: AppTheme.primaryGreen,
                             child: Icon(Icons.mosque, color: Colors.white, size: 20),
                           ),
-                          title: Text(title, style: const TextStyle(fontWeight: FontWeight.bold)),
-                          subtitle: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text("$location • ${DateFormat('d MMM').format(eventDate)}"),
-                              if (link.isNotEmpty)
-                                Padding(
-                                  padding: const EdgeInsets.only(top: 8.0),
-                                  child: Row(
-                                    children: [
-                                      const Icon(Icons.videocam, size: 16, color: Colors.red),
-                                      const SizedBox(width: 5),
-                                      Text(
-                                        lang.getText("JOIN LIVE", "SERTAI SEKARANG"), 
-                                        style: const TextStyle(color: Colors.red, fontWeight: FontWeight.bold, fontSize: 12)
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                            ],
-                          ),
-                          onTap: link.isNotEmpty ? () => _launchURL(link, lang) : null,
+                          title: Text(data['title'] ?? "", style: const TextStyle(fontWeight: FontWeight.bold)),
+                          subtitle: Text("${data['locationName'] ?? ""} • ${DateFormat('d MMM').format(eventDate)}"),
+                          onTap: () {
+                            String link = data['liveLink'] ?? data['link'] ?? "";
+                            if (link.isNotEmpty) {
+                              _launchURL(link, lang);
+                            }
+                          },
                         ),
                       );
                     },
@@ -224,21 +191,22 @@ class _CalendarScreenState extends State<CalendarScreen> {
   }
 
   Widget _buildCollapsibleFilterBar(LanguageProvider lang) {
-    String allText = lang.getText("All", "Semua");
-
     return Container(
       color: Colors.grey[100],
       child: Column(
         children: [
           ListTile(
             title: Text(
-              lang.getText("Filter Events", "Tapis Acara"),
-              style: const TextStyle(fontWeight: FontWeight.bold),
+              lang.getText("Filter Events", "Tapis Acara"), 
+              style: const TextStyle(fontWeight: FontWeight.bold)
             ),
             trailing: Icon(_isFilterExpanded ? Icons.expand_less : Icons.expand_more),
-            onTap: () => setState(() => _isFilterExpanded = !_isFilterExpanded),
+            onTap: () {
+              setState(() {
+                _isFilterExpanded = !_isFilterExpanded;
+              });
+            },
           ),
-          
           AnimatedCrossFade(
             firstChild: const SizedBox(width: double.infinity, height: 0),
             secondChild: Padding(
@@ -259,25 +227,22 @@ class _CalendarScreenState extends State<CalendarScreen> {
                       });
                     },
                   ),
-                  
                   const SizedBox(height: 15),
-
-                  if (_filterMode == "Mosque" && _isLoadingMosques)
-                    const Center(child: CircularProgressIndicator())
-                  else
+                  if (_filterMode == "Mosque" && _isLoadingMosques) ...[
+                    const Center(child: Padding(padding: EdgeInsets.all(10), child: CircularProgressIndicator())),
+                  ] else ...[
                     SingleChildScrollView(
                       scrollDirection: Axis.horizontal,
                       padding: const EdgeInsets.symmetric(horizontal: 15),
                       child: Row(
                         children: [
-                          // Explicit "All" chip with dynamic translation
-                          _buildFilterChip(allText, "All", lang),
-                          
+                          _buildFilterChip(lang.getText("All", "Semua"), "All"),
                           ...(_filterMode == "State" ? malaysianStates : dynamicMosqueList)
-                              .map((name) => _buildFilterChip(name, name, lang)),
+                              .map((name) => _buildFilterChip(name, name)),
                         ],
                       ),
                     ),
+                  ],
                 ],
               ),
             ),
@@ -289,19 +254,14 @@ class _CalendarScreenState extends State<CalendarScreen> {
     );
   }
 
-  Widget _buildFilterChip(String label, String value, LanguageProvider lang) {
+  Widget _buildFilterChip(String label, String value) {
     bool isSelected = (_filterMode == "State" ? selectedState : selectedMosque) == value;
-    
     return Padding(
       padding: const EdgeInsets.only(right: 8.0),
       child: ChoiceChip(
         label: Text(label),
         selected: isSelected,
         selectedColor: AppTheme.primaryGreen,
-        labelStyle: TextStyle(
-          color: isSelected ? Colors.white : Colors.black,
-          fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
-        ),
         onSelected: (val) {
           setState(() {
             if (_filterMode == "State") {
