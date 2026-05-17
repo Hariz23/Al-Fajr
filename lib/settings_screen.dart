@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import 'language_provider.dart';
 import 'theme.dart';
 import 'super_admin_screen.dart';
+import 'notifications_settings_screen.dart'; // <--- ADD THIS IMPORT
 
 class SettingsScreen extends StatelessWidget {
   final String role; 
@@ -12,11 +13,10 @@ class SettingsScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final lang = context.watch<LanguageProvider>();
-    // Strictly check for super_admin role
     final bool isSuperAdmin = role == 'super_admin';
 
     return Scaffold(
-      appBar: AppBar( // Fixed: was app_bar
+      appBar: AppBar(
         title: Text(lang.getText("Settings", "Tetapan")),
         backgroundColor: AppTheme.primaryGreen,
         foregroundColor: Colors.white,
@@ -33,6 +33,21 @@ class SettingsScreen extends StatelessWidget {
             activeTrackColor: AppTheme.primaryGreen.withValues(alpha: 0.5),
             value: lang.isEnglish,
             onChanged: (bool value) => lang.toggleLanguage(),
+          ),
+          const Divider(),
+
+          // --- AZAN / NOTIFICATION SETTINGS ---
+          ListTile(
+            leading: const Icon(Icons.notifications_active, color: AppTheme.primaryGreen),
+            title: Text(lang.getText("Azan Notifications", "Notifikasi Azan")),
+            subtitle: Text(lang.getText("Configure prayer alerts", "Tetapan amaran solat")),
+            trailing: const Icon(Icons.chevron_right),
+            onTap: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (context) => const NotificationSettingsScreen()),
+              );
+            },
           ),
           const Divider(),
 

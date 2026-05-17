@@ -12,6 +12,8 @@ import 'notification_service.dart';
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
+  
+  // Initialize notification plugins and permissions hooks
   await NotificationService().init();
 
   runApp(
@@ -50,8 +52,23 @@ class AuthWrapper extends StatelessWidget {
           return const Scaffold(body: Center(child: CircularProgressIndicator()));
         }
         
-        // If the user is authenticated, send them to the Dashboard
+        // If the user is authenticated, handle scheduling and send them to the Dashboard
         if (snapshot.hasData) {
+          // AUTOMATION FIX: Trigger the scheduling engine as soon as the user is authenticated.
+          // Replace this hardcoded map with your actual prayer calculation database/API output map.
+          WidgetsBinding.instance.addPostFrameCallback((_) async {
+            Map<String, String> currentPrayerTimes = {
+              'Fajr': '05:46',
+              'Dhuhr': '13:05',
+              'Asr': '16:29',
+              'Maghrib': '19:15',
+              'Isha': '20:28',
+            };
+
+            debugPrint("AuthWrapper: User detected. Automating background prayer registration queue...");
+            await NotificationService().scheduleAllPrayers(currentPrayerTimes);
+          });
+
           return const MainDashboard(); 
         }
         
