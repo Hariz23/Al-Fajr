@@ -3,6 +3,7 @@ import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:timezone/data/latest_all.dart' as tz_data;
 import 'package:timezone/timezone.dart' as tz;
 import 'package:flutter_timezone/flutter_timezone.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class NotificationService {
   static final NotificationService _instance = NotificationService._internal();
@@ -14,6 +15,7 @@ class NotificationService {
   Future<void> init() async {
     tz_data.initializeTimeZones();
     final timezoneInfo = await FlutterTimezone.getLocalTimezone();
+    // Reverted to your exact working timezone call
     tz.setLocalLocation(tz.getLocation(timezoneInfo.identifier)); 
     
     const androidSettings = AndroidInitializationSettings('@mipmap/ic_launcher');
@@ -22,6 +24,7 @@ class NotificationService {
       iOS: DarwinInitializationSettings()
     );
     
+    // Reverted to your exact setup using the named 'settings' parameter
     await _notificationsPlugin.initialize(
       settings: initSettings, 
       onDidReceiveNotificationResponse: (NotificationResponse details) {
@@ -38,16 +41,17 @@ class NotificationService {
     }
   }
 
+  // --- PREFERENCES LAYER ---
+  /// Checks if the user has turned the prayer on/off. Defaults to true.
+  Future<bool> _isPrayerEnabled(String prayerName) async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getBool(prayerName) ?? true;
+  }
+
   // --- THE FIXED ROOT CAUSE: SCHEDULE ALL REAL PRAYERS ---
-  /// Call this method whenever the app loads fresh data, updates its location,
-  /// or when the user toggles a notification switch.
-  /// 
-  /// Example data format for [prayerTimes]: 
-  /// { 'Fajr': '05:45', 'Dhuhr': '13:12', 'Asr': '16:30', 'Maghrib': '19:22', 'Isha': '20:35' }
   Future<void> scheduleAllPrayers(Map<String, String> prayerTimes) async {
     final now = DateTime.now();
 
-    // Map names to matching distinct IDs for the system queue
     final Map<String, int> prayerIds = {
       "Fajr": 0,
       "Dhuhr": 1,
@@ -56,33 +60,36 @@ class NotificationService {
       "Isha": 4,
     };
 
-    for (var entry in prayerTimes.entries) {
-      final String name = entry.key; // e.g. "Maghrib"
-      final String timeString = entry.value; // e.g. "19:22"
-      
-      if (!prayerIds.containsKey(name)) continue;
-      final int id = prayerIds[name]!;
+    // Buffer: Loop through Today (0) and Tomorrow (1)
+    for (int dayOffset = 0; dayOffset < 2; dayOffset++) {
+      for (var entry in prayerTimes.entries) {
+        final String name = entry.key; 
+        final String timeString = entry.value; 
+        
+        if (!prayerIds.containsKey(name)) continue;
 
-      try {
-        // Split "19:22" into hours [19] and minutes [22]
-        final List<String> parts = timeString.split(':');
-        final int hour = int.parse(parts[0]);
-        final int minute = int.parse(parts[1]);
+        // Skip scheduling if the user toggled this prayer off
+        if (!await _isPrayerEnabled(name)) continue;
 
-        // Construct the full target DateTime object for today
-        var scheduledTime = DateTime(now.year, now.month, now.day, hour, minute);
+        try {
+          final List<String> parts = timeString.split(':');
+          final int hour = int.parse(parts[0]);
+          final int minute = int.parse(parts[1]);
 
-        // If Maghrib has already passed for today, schedule it for tomorrow's time slot
-        if (scheduledTime.isBefore(now)) {
-          scheduledTime = scheduledTime.add(const Duration(days: 1));
+          // Calculate date for today or tomorrow based on dayOffset
+          final targetDate = now.add(Duration(days: dayOffset));
+          var scheduledTime = DateTime(targetDate.year, targetDate.month, targetDate.day, hour, minute);
+
+          if (scheduledTime.isAfter(now)) {
+            // Unique IDs: Today (0-4), Tomorrow (10-14)
+            final int uniqueId = prayerIds[name]! + (dayOffset * 10);
+            
+            await schedulePrayer(id: uniqueId, title: name, time: scheduledTime);
+            debugPrint("Successfully scheduled: $name at ${scheduledTime.toString()} (ID: $uniqueId)");
+          }
+        } catch (e) {
+          debugPrint("Error scheduling $name: $e");
         }
-
-        // Pass it to our worker method
-        await schedulePrayer(id: id, title: name, time: scheduledTime);
-        debugPrint("Successfully scheduled real-time alarm: $name at $timeString (ID: $id)");
-
-      } catch (e) {
-        debugPrint("Error parsing or scheduling time for $name ($timeString): $e");
       }
     }
   }
@@ -97,6 +104,7 @@ class NotificationService {
     final String channelId = "prayer_ch_$soundName";
     final String channelName = isSubuh ? "Subuh Azan" : "Daily Azan";
 
+    // Reverted perfectly back to your original named parameters logic
     await _notificationsPlugin.zonedSchedule(
       id: id,
       title: title,
@@ -119,7 +127,6 @@ class NotificationService {
   }
 
   // --- UTILITY & DEBUG METHODS ---
-
   Future<void> scheduleDebug({required int id, required TimeOfDay pickedTime}) async {
     final now = DateTime.now();
     var scheduled = DateTime(now.year, now.month, now.day, pickedTime.hour, pickedTime.minute);
