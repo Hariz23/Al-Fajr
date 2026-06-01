@@ -74,8 +74,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
         padding: const EdgeInsets.all(25.0),
         child: Column(
           children: [
-            const Icon(Icons.person_add_outlined, size: 80, color: AppTheme.primaryGreen),
-            const SizedBox(height: 20),
+            Image.asset('assets/horizontal_logo.png', width: 150, height: 130),
             
             TextField(
               controller: _nameController,

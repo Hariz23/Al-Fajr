@@ -8,6 +8,7 @@ import 'home_screen.dart';
 import 'login_screen.dart';
 import 'firebase_options.dart';
 import 'notification_service.dart';
+import 'splash_screen.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -35,7 +36,7 @@ class MyApp extends StatelessWidget {
     return MaterialApp(
       debugShowCheckedModeBanner: false,
       theme: ThemeData(primarySwatch: Colors.green, useMaterial3: true),
-      home: const AuthWrapper(),
+      home: const VideoSplashScreen(nextScreen: AuthWrapper()),
     );
   }
 }

@@ -1,4 +1,4 @@
-name: al_fajr
+name: hijrah
 description: "A new Flutter project."
 publish_to: 'none'
 version: 0.1.0+1
@@ -11,13 +11,13 @@ dependencies:
     sdk: flutter
   flutter_qiblah: ^3.2.0
   geolocator: ^14.0.2 # Standard stable version for 2026
-  permission_handler: ^12.0.1
+  permission_handler: ^12.0.3
   http: ^1.2.0
   islamic_hijri_calendar: ^0.0.5
-  hijri: ^3.0.0
-  firebase_auth: ^6.5.0
-  cloud_firestore: ^6.4.0
-  firebase_core: ^4.8.0
+  hijri: ^3.0.1
+  firebase_auth: ^6.5.2
+  cloud_firestore: ^6.5.0
+  firebase_core: ^4.10.0
   intl: ^0.20.0
   url_launcher: ^6.3.2
   provider: ^6.1.5+1
@@ -25,15 +25,27 @@ dependencies:
   # THE NOTIFICATION FIX:
   flutter_local_notifications: ^21.0.0
   timezone: ^0.11.0 
-  flutter_timezone: ^5.0.2 # Replaced the old "native_timezone"
+  flutter_timezone: ^5.1.0 
   # Audio tools for Quran
   just_audio: ^0.10.5
   just_audio_background: ^0.0.1-beta.17
+  video_player: ^2.9.0
+
 
 dev_dependencies:
   flutter_test:
     sdk: flutter
   flutter_lints: ^6.0.0
+  flutter_launcher_icons: ^0.14.4
 
 flutter:
   uses-material-design: true
+  assets:
+    - assets/
+    # If your video is specifically named splash_video.mp4, include it:
+    - assets/splash_screen.mp4
+
+flutter_launcher_icons:
+  image_path: "assets/icon.png"
+  android: true
+  ios: true

@@ -83,9 +83,8 @@ class _LoginScreenState extends State<LoginScreen> {
                 child: Column(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    const Icon(Icons.mosque, size: 80, color: AppTheme.primaryGreen),
+                    Image.asset('assets/vertical_logo.png', width: 150, height: 150),
                     const SizedBox(height: 20),
-                    const Text("Hijrah", style: TextStyle(fontSize: 32, fontWeight: FontWeight.bold)),
                     Text(
                       lang.getText("Sign in to your community", "Log masuk ke komuniti anda"), 
                       style: const TextStyle(color: Colors.grey)
