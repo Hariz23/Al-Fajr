@@ -1,3 +1,4 @@
+import 'dart:async'; // Added for StreamSubscription
 import 'package:flutter/material.dart';
 import 'package:islamic_hijri_calendar/islamic_hijri_calendar.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -28,16 +29,29 @@ class _CalendarScreenState extends State<CalendarScreen> {
 
   List<String> dynamicMosqueList = [];
   bool _isLoadingMosques = true;
+  
+  // 1. Added variable to hold the live stream subscription
+  StreamSubscription<QuerySnapshot>? _mosqueSubscription;
 
   @override
   void initState() {
     super.initState();
-    _fetchMosqueList();
+    _listenToMosqueList(); // 2. Call the new real-time listener
   }
 
-  Future<void> _fetchMosqueList() async {
-    try {
-      final snap = await FirebaseFirestore.instance.collection('masjids').get();
+  // 3. IMPORTANT: Cancel the stream when the screen is closed to prevent memory leaks
+  @override
+  void dispose() {
+    _mosqueSubscription?.cancel();
+    super.dispose();
+  }
+
+  // 4. Replaced one-time fetch with this real-time listener
+  void _listenToMosqueList() {
+    _mosqueSubscription = FirebaseFirestore.instance
+        .collection('masjids')
+        .snapshots()
+        .listen((snap) {
       List<String> fetchedNames = [];
       for (var doc in snap.docs) {
         if (doc.data().containsKey('name') && doc['name'].toString().trim().isNotEmpty) {
@@ -45,19 +59,20 @@ class _CalendarScreenState extends State<CalendarScreen> {
         }
       }
       fetchedNames.sort();
+      
       if (mounted) {
         setState(() {
           dynamicMosqueList = fetchedNames;
           _isLoadingMosques = false;
         });
       }
-    } catch (e) {
+    }, onError: (e) {
       if (mounted) {
         setState(() {
           _isLoadingMosques = false;
         });
       }
-    }
+    });
   }
 
   Future<void> _launchURL(String url, LanguageProvider lang) async {
