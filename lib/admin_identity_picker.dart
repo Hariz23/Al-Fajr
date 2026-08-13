@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'admin_profile_provider.dart';
 import 'language_provider.dart';
-import 'theme.dart';
 
 class AdminIdentityPicker extends StatefulWidget {
   final AdminProfileProvider profile;
@@ -116,8 +115,6 @@ class _AdminIdentityPickerState extends State<AdminIdentityPicker> {
             ),
             ElevatedButton(
               style: ElevatedButton.styleFrom(
-                backgroundColor: AppTheme.primaryGreen, 
-                foregroundColor: Colors.white
               ),
               onPressed: () async {
                 if (_tempState != null && _tempMasjid != null) {

@@ -31,8 +31,6 @@ class _QuranScreenState extends State<QuranScreen> {
     return Scaffold(
       appBar: AppBar(
         title: Text(lang.getText("Al-Quran", "Al-Quran")),
-        backgroundColor: AppTheme.primaryGreen,
-        foregroundColor: Colors.white,
       ),
       body: FutureBuilder<List<dynamic>>(
         future: fetchSurahs(),
@@ -51,7 +49,7 @@ class _QuranScreenState extends State<QuranScreen> {
 
               return ListTile(
                 leading: CircleAvatar(
-                  backgroundColor: AppTheme.primaryGreen.withOpacity(0.1),
+                  backgroundColor: AppTheme.primaryGreen.withValues(alpha: 0.1),
                   child: Text("$number", style: const TextStyle(color: AppTheme.primaryGreen, fontWeight: FontWeight.bold)),
                 ),
                 title: Text(surah['englishName'], style: const TextStyle(fontWeight: FontWeight.bold)),
@@ -152,8 +150,6 @@ class _SurahDetailViewState extends State<SurahDetailView> {
     return Scaffold(
       appBar: AppBar(
         title: Text(widget.surahName),
-        backgroundColor: AppTheme.primaryGreen,
-        foregroundColor: Colors.white,
       ),
       body: FutureBuilder<Map<String, dynamic>>(
         future: fetchAyahs(lang.isEnglish),
@@ -189,7 +185,7 @@ class _SurahDetailViewState extends State<SurahDetailView> {
                   Container(
                     padding: const EdgeInsets.all(15),
                     decoration: BoxDecoration(
-                      color: index % 2 == 0 ? Colors.transparent : AppTheme.primaryGreen.withOpacity(0.04),
+                      color: index % 2 == 0 ? Colors.transparent : AppTheme.primaryGreen.withValues(alpha: 0.04),
                       borderRadius: BorderRadius.circular(12),
                     ),
                     child: Column(
@@ -198,7 +194,7 @@ class _SurahDetailViewState extends State<SurahDetailView> {
                         Row(
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
-                            Text("#${arabic['numberInSurah']}", style: TextStyle(color: Colors.grey[600], fontSize: 12)),
+                            Text("#${arabic['numberInSurah']}", style: TextStyle(color: AppTheme.textSecondary, fontSize: 12)),
                             IconButton(
                               icon: Icon(
                                 _playingAyahIndex == index ? Icons.pause_circle_filled : Icons.play_circle_fill,
@@ -213,7 +209,7 @@ class _SurahDetailViewState extends State<SurahDetailView> {
                         const SizedBox(height: 12),
                         Align(
                           alignment: Alignment.centerLeft,
-                          child: Text(translation['text'], style: TextStyle(fontSize: 14, color: Colors.grey[800], height: 1.4)),
+                          child: Text(translation['text'], style: TextStyle(fontSize: 14, color: AppTheme.textSecondary, height: 1.4)),
                         ),
                       ],
                     ),

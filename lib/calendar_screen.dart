@@ -115,8 +115,6 @@ class _CalendarScreenState extends State<CalendarScreen> {
     return Scaffold(
       appBar: AppBar(
         title: Text(lang.getText("Community Calendar", "Kalendar Komuniti")),
-        backgroundColor: AppTheme.primaryGreen,
-        foregroundColor: Colors.white,
       ),
       body: CustomScrollView(
         slivers: [
@@ -207,7 +205,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
 
   Widget _buildCollapsibleFilterBar(LanguageProvider lang) {
     return Container(
-      color: Colors.grey[100],
+      color: AppTheme.bgSoftWhite,
       child: Column(
         children: [
           ListTile(

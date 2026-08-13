@@ -137,8 +137,6 @@ class _AdminPanelState extends State<AdminPanel> {
     return Scaffold(
       appBar: AppBar(
         title: Text("${widget.masjidName} Admin"),
-        backgroundColor: AppTheme.primaryGreen,
-        foregroundColor: Colors.white,
         actions: [
           if (_isEditing) IconButton(icon: const Icon(Icons.close), onPressed: _clearForm)
         ],
@@ -164,7 +162,7 @@ class _AdminPanelState extends State<AdminPanel> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text("Posting for: $_detectedState", style: const TextStyle(color: Colors.grey, fontSize: 12)),
+          Text("Posting for: $_detectedState", style: const TextStyle(color: AppTheme.textSecondary, fontSize: 12)),
           const SizedBox(height: 8),
           TextFormField(
             controller: _titleController,
@@ -198,8 +196,6 @@ class _AdminPanelState extends State<AdminPanel> {
                 : ElevatedButton(
                     onPressed: _handleSave,
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: AppTheme.primaryGreen, 
-                      foregroundColor: Colors.white
                     ),
                     child: Text(_isEditing ? "Update" : "Post"),
                   ),

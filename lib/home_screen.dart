@@ -64,9 +64,6 @@ class _MainDashboardState extends State<MainDashboard> {
           bottomNavigationBar: BottomNavigationBar(
             currentIndex: _currentIndex,
             onTap: (index) => setState(() => _currentIndex = index),
-            type: BottomNavigationBarType.fixed,
-            selectedItemColor: AppTheme.primaryGreen,
-            unselectedItemColor: Colors.grey,
             showUnselectedLabels: true,
             items: [
               BottomNavigationBarItem(icon: const Icon(Icons.home_outlined), label: lang.getText("Home", "Utama")),
@@ -174,8 +171,8 @@ class _HomeScreenState extends State<HomeScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(greeting, style: const TextStyle(color: Colors.white, fontSize: 22, fontWeight: FontWeight.bold)),
-          Text(subTitle, style: const TextStyle(color: Colors.white70, fontSize: 14)),
+          Text(greeting, style: const TextStyle(color: AppTheme.textOnPrimary, fontSize: 22, fontWeight: FontWeight.bold)),
+          Text(subTitle, style: TextStyle(color: AppTheme.textOnPrimary.withValues(alpha: 0.7), fontSize: 14)),
           const SizedBox(height: 25),
           _buildPrayerRow(lang),
         ],
@@ -186,7 +183,7 @@ class _HomeScreenState extends State<HomeScreen> {
   Widget _buildPrayerRow(LanguageProvider lang) {
     return Container(
       padding: const EdgeInsets.all(15),
-      decoration: BoxDecoration(color: Colors.white.withOpacity(0.1), borderRadius: BorderRadius.circular(20)),
+      decoration: BoxDecoration(color: AppTheme.textOnPrimary.withValues(alpha: 0.1), borderRadius: AppTheme.borderRadiusLg),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
@@ -202,8 +199,8 @@ class _HomeScreenState extends State<HomeScreen> {
 
   Widget _prayerTime(String label, String? time) {
     return Column(children: [
-      Text(label, style: const TextStyle(color: Colors.white60, fontSize: 10)),
-      Text(time ?? "--:--", style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 13)),
+      Text(label, style: TextStyle(color: AppTheme.textOnPrimary.withValues(alpha: 0.6), fontSize: 10)),
+      Text(time ?? "--:--", style: const TextStyle(color: AppTheme.textOnPrimary, fontWeight: FontWeight.bold, fontSize: 13)),
     ]);
   }
 
@@ -213,7 +210,7 @@ class _HomeScreenState extends State<HomeScreen> {
       borderRadius: BorderRadius.circular(25),
       child: Container(
         decoration: BoxDecoration(
-          color: isSpecial ? AppTheme.primaryGreen.withOpacity(0.1) : Colors.white,
+          color: isSpecial ? AppTheme.primaryGreen.withValues(alpha: 0.1) : AppTheme.surface,
           borderRadius: BorderRadius.circular(25),
           boxShadow: [BoxShadow(color: Colors.black12, blurRadius: 10, offset: const Offset(0, 4))],
         ),

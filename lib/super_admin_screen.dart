@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:provider/provider.dart';
 import 'language_provider.dart';
+import 'theme.dart';
 
 class SuperAdminScreen extends StatefulWidget {
   const SuperAdminScreen({super.key});
@@ -186,7 +187,7 @@ class _SuperAdminScreenState extends State<SuperAdminScreen> {
         labelText: label,
         prefixIcon: Icon(icon, size: 20),
         filled: true,
-        fillColor: Colors.grey.shade50,
+        fillColor: AppTheme.textSecondary,
         border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
       ),
     );
@@ -196,7 +197,7 @@ class _SuperAdminScreenState extends State<SuperAdminScreen> {
     return DropdownButtonFormField<String>(
       initialValue: value,
       hint: Text(hint),
-      decoration: InputDecoration(filled: true, fillColor: Colors.grey.shade50, border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none)),
+      decoration: InputDecoration(filled: true, fillColor: AppTheme.textSecondary, border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none)),
       items: items.map((s) => DropdownMenuItem(value: s, child: Text(nameMap?[s] ?? s))).toList(),
       onChanged: onChanged,
     );

@@ -9,6 +9,7 @@ import 'login_screen.dart';
 import 'firebase_options.dart';
 import 'notification_service.dart';
 import 'splash_screen.dart';
+import 'theme.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -35,7 +36,8 @@ class MyApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MaterialApp(
       debugShowCheckedModeBanner: false,
-      theme: ThemeData(primarySwatch: Colors.green, useMaterial3: true),
+      theme: AppTheme.lightTheme,
+      themeMode: ThemeMode.light,
       home: const VideoSplashScreen(nextScreen: AuthWrapper()),
     );
   }

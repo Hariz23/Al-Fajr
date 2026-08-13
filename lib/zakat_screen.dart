@@ -97,8 +97,6 @@ class _ZakatScreenState extends State<ZakatScreen> {
       backgroundColor: Colors.white,
       appBar: AppBar(
         title: const Text("Spiritual Tools"),
-        backgroundColor: AppTheme.primaryGreen,
-        foregroundColor: Colors.white,
         actions: [IconButton(icon: const Icon(Icons.refresh), onPressed: _clearAll)],
       ),
       body: Column(
@@ -135,7 +133,7 @@ class _ZakatScreenState extends State<ZakatScreen> {
       child: Column(children: [
         Text(_morningZikir[index]['ar']!, textAlign: TextAlign.right, style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: AppTheme.primaryGreen)),
         const SizedBox(height: 10),
-        Text(_morningZikir[index]['en']!, textAlign: TextAlign.center, style: TextStyle(fontSize: 12, color: Colors.grey[600], fontStyle: FontStyle.italic)),
+        Text(_morningZikir[index]['en']!, textAlign: TextAlign.center, style: TextStyle(fontSize: 12, color: AppTheme.textSecondary, fontStyle: FontStyle.italic)),
       ]),
     ),
   );

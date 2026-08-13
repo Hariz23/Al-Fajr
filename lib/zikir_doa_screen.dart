@@ -15,7 +15,7 @@ class ZikirDoaScreen extends StatelessWidget {
           bottom: const TabBar(
             indicatorColor: AppTheme.accentGold,
             labelColor: AppTheme.primaryGreen,
-            unselectedLabelColor: Colors.grey,
+            unselectedLabelColor: AppTheme.textSecondary,
             tabs: [
               Tab(icon: Icon(Icons.repeat), text: "Zikir"),
               Tab(icon: Icon(Icons.favorite), text: "Daily Doa"),
@@ -75,8 +75,8 @@ class _ZikirTabState extends State<ZikirTab> {
           const SizedBox(height: 40),
           TextButton.icon(
             onPressed: () => setState(() => _counter = 0),
-            icon: const Icon(Icons.refresh, color: Colors.grey),
-            label: const Text("Reset Counter", style: TextStyle(color: Colors.grey)),
+            icon: const Icon(Icons.refresh, color: AppTheme.textSecondary),
+            label: const Text("Reset Counter", style: TextStyle(color: AppTheme.textSecondary)),
           ),
         ],
       ),

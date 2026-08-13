@@ -15,8 +15,6 @@ class NotificationSettingsScreen extends StatelessWidget {
     return Scaffold(
       appBar: AppBar(
         title: Text(lang.getText("Notification Settings", "Tetapan Notifikasi")),
-        backgroundColor: AppTheme.primaryGreen,
-        foregroundColor: Colors.white,
       ),
       body: ListView(
         children: [
@@ -29,7 +27,7 @@ class NotificationSettingsScreen extends StatelessWidget {
                 margin: const EdgeInsets.all(16),
                 padding: const EdgeInsets.all(12),
                 decoration: BoxDecoration(
-                  color: granted ? Colors.green.withOpacity(0.1) : Colors.red.withOpacity(0.1),
+                  color: granted ? Colors.green.withValues(alpha: 0.1) : Colors.red.withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(8),
                   border: Border.all(color: granted ? Colors.green : Colors.red),
                 ),
@@ -50,7 +48,7 @@ class NotificationSettingsScreen extends StatelessWidget {
           ...settings.keys.map((prayer) {
             final isEnabled = settings[prayer]!;
             return SwitchListTile(
-              activeColor: AppTheme.primaryGreen,
+              activeThumbColor: AppTheme.primaryGreen,
               title: Text(_getPrayerName(prayer, lang)),
               value: isEnabled,
               onChanged: (bool value) async {

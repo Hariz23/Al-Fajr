@@ -59,8 +59,6 @@ class _AdminPostScreenState extends State<AdminPostScreen> {
     return Scaffold(
       appBar: AppBar(
         title: Text(lang.getText("Admin Panel: Add Event", "Panel Admin: Tambah Acara")),
-        backgroundColor: AppTheme.primaryGreen,
-        foregroundColor: Colors.white,
       ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(20),
@@ -68,7 +66,7 @@ class _AdminPostScreenState extends State<AdminPostScreen> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(lang.getText("1. CHOOSE LOCATION", "1. PILIH LOKASI"), 
-              style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.grey)),
+              style: const TextStyle(fontWeight: FontWeight.bold, color: AppTheme.textSecondary)),
             const SizedBox(height: 10),
 
             // DYNAMIC STATE SELECTOR
@@ -126,7 +124,7 @@ class _AdminPostScreenState extends State<AdminPostScreen> {
 
             const SizedBox(height: 30),
             Text(lang.getText("2. EVENT DETAILS", "2. BUTIRAN ACARA"), 
-              style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.grey)),
+              style: const TextStyle(fontWeight: FontWeight.bold, color: AppTheme.textSecondary)),
             const SizedBox(height: 10),
             
             TextField(

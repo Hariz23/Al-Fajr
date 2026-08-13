@@ -18,8 +18,6 @@ class SettingsScreen extends StatelessWidget {
     return Scaffold(
       appBar: AppBar(
         title: Text(lang.getText("Settings", "Tetapan")),
-        backgroundColor: AppTheme.primaryGreen,
-        foregroundColor: Colors.white,
       ),
       body: ListView(
         padding: const EdgeInsets.symmetric(vertical: 20),

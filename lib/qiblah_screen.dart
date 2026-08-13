@@ -75,8 +75,6 @@ class _QiblahScreenState extends State<QiblahScreen> {
     return Scaffold(
       appBar: AppBar(
         title: Text(lang.getText("Qiblat Finder", "Pencari Kiblat")),
-        backgroundColor: AppTheme.primaryGreen,
-        foregroundColor: Colors.white,
       ),
       body: !_hasPermission || _currentPosition == null
           ? const Center(child: CircularProgressIndicator())
@@ -111,7 +109,7 @@ class _QiblahScreenState extends State<QiblahScreen> {
                           child: Stack(
                             alignment: Alignment.center,
                             children: [
-                              const Icon(Icons.circle_outlined, size: 250, color: Colors.grey),
+                              const Icon(Icons.circle_outlined, size: 250, color: AppTheme.textSecondary),
                               Transform.rotate(
                                 angle: (direction.qiblah * (math.pi / 180) * -1),
                                 child: const Icon(Icons.navigation, size: 120, color: AppTheme.accentGold),
@@ -142,7 +140,7 @@ class _QiblahScreenState extends State<QiblahScreen> {
                             Row(
                               mainAxisAlignment: MainAxisAlignment.spaceBetween,
                               children: [
-                                Text(lang.getText("Your Location", "Lokasi Anda"), style: const TextStyle(color: Colors.grey)),
+                                Text(lang.getText("Your Location", "Lokasi Anda"), style: const TextStyle(color: AppTheme.textSecondary)),
                                 const Text("Kuala Lumpur", style: TextStyle(fontWeight: FontWeight.bold)),
                               ],
                             ),

@@ -53,7 +53,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
         errorMsg = lang.getText("Email already registered.", "Emel telah berdaftar.");
       }
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(errorMsg), backgroundColor: Colors.red),
+        SnackBar(content: Text(errorMsg), backgroundColor: AppTheme.danger),
       );
     } finally {
       if (mounted) setState(() => _isLoading = false);
@@ -67,8 +67,6 @@ class _SignUpScreenState extends State<SignUpScreen> {
     return Scaffold(
       appBar: AppBar(
         title: Text(lang.getText("Sign Up", "Daftar Akaun")),
-        backgroundColor: AppTheme.primaryGreen,
-        foregroundColor: Colors.white,
       ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(25.0),
@@ -80,7 +78,6 @@ class _SignUpScreenState extends State<SignUpScreen> {
               controller: _nameController,
               decoration: InputDecoration(
                 labelText: lang.getText("Full Name", "Nama Penuh"),
-                border: const OutlineInputBorder(),
                 prefixIcon: const Icon(Icons.person_outline),
               ),
             ),
@@ -91,7 +88,6 @@ class _SignUpScreenState extends State<SignUpScreen> {
               keyboardType: TextInputType.emailAddress,
               decoration: InputDecoration(
                 labelText: lang.getText("Email", "Emel"),
-                border: const OutlineInputBorder(),
                 prefixIcon: const Icon(Icons.email_outlined),
               ),
             ),
@@ -101,7 +97,6 @@ class _SignUpScreenState extends State<SignUpScreen> {
               controller: _passwordController,
               decoration: InputDecoration(
                 labelText: lang.getText("Password", "Kata Laluan"),
-                border: const OutlineInputBorder(),
                 prefixIcon: const Icon(Icons.lock_outline),
               ),
               obscureText: true,
@@ -110,19 +105,12 @@ class _SignUpScreenState extends State<SignUpScreen> {
             
             SizedBox(
               width: double.infinity,
-              height: 55,
+              height: AppTheme.buttonHeight,
               child: ElevatedButton(
                 onPressed: _isLoading ? null : () => _signUp(lang),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: AppTheme.primaryGreen,
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                ),
-                child: _isLoading 
-                  ? const CircularProgressIndicator(color: Colors.white) 
-                  : Text(
-                      lang.getText("CREATE ACCOUNT", "DAFTAR AKAUN"), 
-                      style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold)
-                    ),
+                child: _isLoading
+                  ? const CircularProgressIndicator(color: AppTheme.textOnPrimary)
+                  : Text(lang.getText("CREATE ACCOUNT", "DAFTAR AKAUN")),
               ),
             ),
           ],

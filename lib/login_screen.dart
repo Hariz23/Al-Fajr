@@ -70,7 +70,6 @@ class _LoginScreenState extends State<LoginScreen> {
     final lang = context.watch<LanguageProvider>();
 
     return Scaffold(
-      backgroundColor: Colors.white,
       // Using a Stack allows us to pin the language button to the corner
       body: Stack(
         children: [
@@ -86,17 +85,16 @@ class _LoginScreenState extends State<LoginScreen> {
                     Image.asset('assets/vertical_logo.png', width: 150, height: 150),
                     const SizedBox(height: 20),
                     Text(
-                      lang.getText("Sign in to your community", "Log masuk ke komuniti anda"), 
-                      style: const TextStyle(color: Colors.grey)
+                      lang.getText("Sign in to your community", "Log masuk ke komuniti anda"),
+                      style: const TextStyle(color: AppTheme.textSecondary)
                     ),
                     const SizedBox(height: 40),
-                    
+
                     TextFormField(
                       controller: _identifierController,
                       decoration: InputDecoration(
                         labelText: lang.getText("Email or Name", "Emel atau Nama"),
                         prefixIcon: const Icon(Icons.person_outline),
-                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(15)),
                       ),
                       validator: (val) => val!.isEmpty 
                         ? lang.getText("Enter email or name", "Masukkan emel atau nama") 
@@ -110,7 +108,6 @@ class _LoginScreenState extends State<LoginScreen> {
                       decoration: InputDecoration(
                         labelText: lang.getText("Password", "Kata Laluan"),
                         prefixIcon: const Icon(Icons.lock_outline),
-                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(15)),
                       ),
                       validator: (val) => val!.length < 6 
                         ? lang.getText("Minimum 6 characters", "Minimum 6 aksara") 
@@ -120,19 +117,12 @@ class _LoginScreenState extends State<LoginScreen> {
                     
                     SizedBox(
                       width: double.infinity,
-                      height: 60,
+                      height: AppTheme.buttonHeight,
                       child: ElevatedButton(
                         onPressed: _isLoading ? null : () => _login(lang),
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.black,
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
-                        ),
-                        child: _isLoading 
-                          ? const CircularProgressIndicator(color: Colors.white)
-                          : Text(
-                              lang.getText("LOGIN", "LOG MASUK"), 
-                              style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold)
-                            ),
+                        child: _isLoading
+                          ? const CircularProgressIndicator(color: AppTheme.textOnPrimary)
+                          : Text(lang.getText("LOGIN", "LOG MASUK")),
                       ),
                     ),
                     
@@ -144,7 +134,6 @@ class _LoginScreenState extends State<LoginScreen> {
                       },
                       child: Text(
                         lang.getText("Don't have an account? Sign Up", "Tiada akaun? Daftar Sini"),
-                        style: const TextStyle(color: AppTheme.primaryGreen, fontWeight: FontWeight.bold),
                       ),
                     ),
                   ],
@@ -159,15 +148,16 @@ class _LoginScreenState extends State<LoginScreen> {
             right: 20,
             child: Container(
               decoration: BoxDecoration(
-                color: Colors.grey.shade100, // Subtle background to make it look "separate"
-                borderRadius: BorderRadius.circular(20),
+                color: AppTheme.surface, // Subtle background to make it look "separate"
+                borderRadius: AppTheme.borderRadiusLg,
+                border: Border.all(color: AppTheme.divider),
               ),
               child: TextButton.icon(
                 onPressed: () => lang.toggleLanguage(),
-                icon: const Icon(Icons.language, size: 18, color: AppTheme.primaryGreen),
+                icon: const Icon(Icons.language, size: 18),
                 label: Text(
                   lang.isEnglish ? "BM" : "EN", // Using shortcodes to keep it minimalist
-                  style: const TextStyle(color: AppTheme.primaryGreen, fontWeight: FontWeight.bold, fontSize: 12),
+                  style: const TextStyle(fontSize: 12),
                 ),
               ),
             ),
