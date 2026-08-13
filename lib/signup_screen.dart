@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import 'app_ui.dart';
+import 'auth_shell.dart';
 import 'language_provider.dart';
 import 'theme.dart';
 
@@ -105,163 +106,169 @@ class _SignUpScreenState extends State<SignUpScreen> {
   @override
   Widget build(BuildContext context) {
     final lang = context.watch<LanguageProvider>();
-    return AppPage(
+    return AuthShell(
       title: lang.getText('Create account', 'Cipta akaun'),
       subtitle: lang.getText(
-        'Join the Al Fajr community',
-        'Sertai komuniti Al Fajr',
+        'Join the Al Fajr community.',
+        'Sertai komuniti Al Fajr.',
       ),
+      languageLabel: lang.isEnglish ? 'BM' : 'EN',
+      onToggleLanguage: lang.toggleLanguage,
       showBackButton: true,
-      child: Center(
-        child: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: 460),
-          child: Form(
-            key: _formKey,
-            child: AutofillGroup(
-              child: Column(
-                children: [
-                  AppSurface(
-                    color: AppTheme.mint,
-                    borderColor: AppTheme.mintStrong,
-                    child: Row(
-                      children: [
-                        Container(
-                          width: 50,
-                          height: 50,
-                          padding: const EdgeInsets.all(7),
-                          decoration: BoxDecoration(
-                            color: AppTheme.surface,
-                            borderRadius: AppTheme.borderRadiusSm,
-                          ),
-                          child: Image.asset('assets/icon.png'),
-                        ),
-                        const SizedBox(width: 14),
-                        Expanded(
-                          child: Text(
-                            lang.getText(
-                              'Save preferences and stay connected to your mosque.',
-                              'Simpan pilihan dan kekal terhubung dengan masjid anda.',
-                            ),
-                            style: const TextStyle(
-                              color: AppTheme.primaryGreenDark,
-                              fontWeight: FontWeight.w600,
-                              height: 1.35,
-                            ),
-                          ),
-                        ),
-                      ],
+      child: Form(
+        key: _formKey,
+        child: AutofillGroup(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              AppSurface(
+                color: AppTheme.mint,
+                borderColor: AppTheme.mintStrong,
+                child: Row(
+                  children: [
+                    const Icon(
+                      CupertinoIcons.checkmark_seal_fill,
+                      color: AppTheme.primaryGreen,
+                      size: 24,
                     ),
-                  ),
-                  const SizedBox(height: 22),
-                  TextFormField(
-                    controller: _nameController,
-                    autofillHints: const [AutofillHints.name],
-                    textCapitalization: TextCapitalization.words,
-                    textInputAction: TextInputAction.next,
-                    decoration: InputDecoration(
-                      labelText: lang.getText('Full name', 'Nama penuh'),
-                      prefixIcon: const Icon(CupertinoIcons.person),
-                    ),
-                    validator: (value) => (value?.trim().length ?? 0) < 2
-                        ? lang.getText(
-                            'Enter your full name.',
-                            'Masukkan nama penuh anda.',
-                          )
-                        : null,
-                  ),
-                  const SizedBox(height: 14),
-                  TextFormField(
-                    controller: _emailController,
-                    autofillHints: const [AutofillHints.email],
-                    keyboardType: TextInputType.emailAddress,
-                    textInputAction: TextInputAction.next,
-                    autocorrect: false,
-                    decoration: InputDecoration(
-                      labelText: lang.getText('Email', 'Emel'),
-                      prefixIcon: const Icon(CupertinoIcons.mail),
-                    ),
-                    validator: (value) {
-                      final email = value?.trim() ?? '';
-                      if (!RegExp(
-                        r'^[^@\s]+@[^@\s]+\.[^@\s]+$',
-                      ).hasMatch(email)) {
-                        return lang.getText(
-                          'Enter a valid email address.',
-                          'Masukkan alamat emel yang sah.',
-                        );
-                      }
-                      return null;
-                    },
-                  ),
-                  const SizedBox(height: 14),
-                  TextFormField(
-                    controller: _passwordController,
-                    autofillHints: const [AutofillHints.newPassword],
-                    obscureText: _obscurePassword,
-                    textInputAction: TextInputAction.done,
-                    onFieldSubmitted: (_) => _signUp(lang),
-                    decoration: InputDecoration(
-                      labelText: lang.getText('Password', 'Kata laluan'),
-                      prefixIcon: const Icon(CupertinoIcons.lock),
-                      suffixIcon: IconButton(
-                        tooltip: _obscurePassword
-                            ? lang.getText(
-                                'Show password',
-                                'Tunjukkan kata laluan',
-                              )
-                            : lang.getText(
-                                'Hide password',
-                                'Sembunyikan kata laluan',
-                              ),
-                        onPressed: () => setState(
-                          () => _obscurePassword = !_obscurePassword,
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Text(
+                        lang.getText(
+                          'Save preferences and stay connected to your mosque.',
+                          'Simpan pilihan dan kekal terhubung dengan masjid anda.',
                         ),
-                        icon: Icon(
-                          _obscurePassword
-                              ? CupertinoIcons.eye
-                              : CupertinoIcons.eye_slash,
+                        style: const TextStyle(
+                          color: AppTheme.primaryGreenDark,
+                          fontSize: 13,
+                          fontWeight: FontWeight.w600,
+                          height: 1.35,
                         ),
                       ),
                     ),
-                    validator: (value) => (value?.length ?? 0) < 6
-                        ? lang.getText(
-                            'Use at least 6 characters.',
-                            'Gunakan sekurang-kurangnya 6 aksara.',
-                          )
-                        : null,
-                  ),
-                  const SizedBox(height: 22),
-                  SizedBox(
-                    width: double.infinity,
-                    child: FilledButton(
-                      onPressed: _isLoading ? null : () => _signUp(lang),
-                      child: _isLoading
-                          ? const SizedBox.square(
-                              dimension: 20,
-                              child: CircularProgressIndicator(
-                                strokeWidth: 2,
-                                color: AppTheme.textOnPrimary,
-                              ),
-                            )
-                          : Text(lang.getText('Create account', 'Cipta akaun')),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 20),
+              TextFormField(
+                controller: _nameController,
+                autofillHints: const [AutofillHints.name],
+                textCapitalization: TextCapitalization.words,
+                textInputAction: TextInputAction.next,
+                decoration: InputDecoration(
+                  labelText: lang.getText('Full name', 'Nama penuh'),
+                  prefixIcon: const Icon(CupertinoIcons.person),
+                ),
+                validator: (value) => (value?.trim().length ?? 0) < 2
+                    ? lang.getText(
+                        'Enter your full name.',
+                        'Masukkan nama penuh anda.',
+                      )
+                    : null,
+              ),
+              const SizedBox(height: 14),
+              TextFormField(
+                controller: _emailController,
+                autofillHints: const [AutofillHints.email],
+                keyboardType: TextInputType.emailAddress,
+                textInputAction: TextInputAction.next,
+                autocorrect: false,
+                decoration: InputDecoration(
+                  labelText: lang.getText('Email', 'Emel'),
+                  prefixIcon: const Icon(CupertinoIcons.mail),
+                ),
+                validator: (value) =>
+                    RegExp(r'^[^@\s]+@[^@\s]+\.[^@\s]+$').hasMatch(
+                      value?.trim() ?? '',
+                    )
+                    ? null
+                    : lang.getText(
+                        'Enter a valid email address.',
+                        'Masukkan alamat emel yang sah.',
+                      ),
+              ),
+              const SizedBox(height: 14),
+              TextFormField(
+                controller: _passwordController,
+                autofillHints: const [AutofillHints.newPassword],
+                obscureText: _obscurePassword,
+                textInputAction: TextInputAction.done,
+                onFieldSubmitted: (_) => _signUp(lang),
+                decoration: InputDecoration(
+                  labelText: lang.getText('Password', 'Kata laluan'),
+                  prefixIcon: const Icon(CupertinoIcons.lock),
+                  suffixIcon: IconButton(
+                    tooltip: _obscurePassword
+                        ? lang.getText('Show password', 'Tunjukkan kata laluan')
+                        : lang.getText(
+                            'Hide password',
+                            'Sembunyikan kata laluan',
+                          ),
+                    onPressed: () =>
+                        setState(() => _obscurePassword = !_obscurePassword),
+                    icon: Icon(
+                      _obscurePassword
+                          ? CupertinoIcons.eye
+                          : CupertinoIcons.eye_slash,
                     ),
                   ),
-                  const SizedBox(height: 14),
+                ),
+                validator: (value) => (value?.length ?? 0) < 6
+                    ? lang.getText(
+                        'Use at least 6 characters.',
+                        'Gunakan sekurang-kurangnya 6 aksara.',
+                      )
+                    : null,
+              ),
+              const SizedBox(height: 22),
+              FilledButton(
+                onPressed: _isLoading ? null : () => _signUp(lang),
+                child: _isLoading
+                    ? const SizedBox.square(
+                        dimension: 20,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          color: AppTheme.textOnPrimary,
+                        ),
+                      )
+                    : Text(lang.getText('Create account', 'Cipta akaun')),
+              ),
+              const SizedBox(height: 14),
+              Text(
+                lang.getText(
+                  'By continuing, you agree to use accurate account information.',
+                  'Dengan meneruskan, anda bersetuju menggunakan maklumat akaun yang tepat.',
+                ),
+                textAlign: TextAlign.center,
+                style: const TextStyle(
+                  color: AppTheme.textSecondary,
+                  fontSize: 12,
+                  height: 1.4,
+                ),
+              ),
+              const SizedBox(height: 10),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
                   Text(
                     lang.getText(
-                      'By continuing, you agree to use accurate account information.',
-                      'Dengan meneruskan, anda bersetuju menggunakan maklumat akaun yang tepat.',
+                      'Already registered?',
+                      'Sudah mempunyai akaun?',
                     ),
-                    textAlign: TextAlign.center,
                     style: const TextStyle(
                       color: AppTheme.textSecondary,
-                      fontSize: 12,
-                      height: 1.4,
+                      fontSize: 14,
                     ),
+                  ),
+                  TextButton(
+                    onPressed: _isLoading
+                        ? null
+                        : () => Navigator.maybePop(context),
+                    child: Text(lang.getText('Sign in', 'Log masuk')),
                   ),
                 ],
               ),
-            ),
+            ],
           ),
         ),
       ),

@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import 'app_ui.dart';
+import 'auth_shell.dart';
 import 'language_provider.dart';
 import 'signup_screen.dart';
 import 'theme.dart';
@@ -85,6 +86,54 @@ class _LoginScreenState extends State<LoginScreen> {
     }
   }
 
+  Future<void> _resetPassword(LanguageProvider lang) async {
+    FocusScope.of(context).unfocus();
+    final typed = _identifierController.text.trim();
+    final email = await showDialog<String>(
+      context: context,
+      builder: (_) => _ResetPasswordDialog(
+        lang: lang,
+        initialEmail: typed.contains('@') ? typed : '',
+      ),
+    );
+    if (email == null || !mounted) return;
+
+    try {
+      await FirebaseAuth.instance.sendPasswordResetEmail(email: email);
+      if (!mounted) return;
+      showAppMessage(
+        context,
+        lang.getText(
+          'If that email has an account, a reset link is on its way.',
+          'Jika emel itu mempunyai akaun, pautan tetapan semula akan dihantar.',
+        ),
+      );
+    } on FirebaseAuthException catch (error) {
+      if (!mounted) return;
+      // 'user-not-found' is deliberately not distinguished here: telling a
+      // stranger which emails are registered leaks the member list.
+      final message = switch (error.code) {
+        'invalid-email' => lang.getText(
+          'Enter a valid email address.',
+          'Masukkan alamat emel yang sah.',
+        ),
+        'too-many-requests' => lang.getText(
+          'Too many attempts. Please wait and try again.',
+          'Terlalu banyak percubaan. Sila tunggu dan cuba lagi.',
+        ),
+        'network-request-failed' => lang.getText(
+          'No internet connection. Please try again.',
+          'Tiada sambungan internet. Sila cuba lagi.',
+        ),
+        _ => lang.getText(
+          'If that email has an account, a reset link is on its way.',
+          'Jika emel itu mempunyai akaun, pautan tetapan semula akan dihantar.',
+        ),
+      };
+      showAppMessage(context, message, isError: error.code != 'user-not-found');
+    }
+  }
+
   String _authMessage(LanguageProvider lang, String code) {
     switch (code) {
       case 'user-not-found':
@@ -112,192 +161,219 @@ class _LoginScreenState extends State<LoginScreen> {
         );
     }
   }
-
   @override
   Widget build(BuildContext context) {
     final lang = context.watch<LanguageProvider>();
-    return Scaffold(
-      body: SafeArea(
-        child: Stack(
-          children: [
-            SingleChildScrollView(
-              padding: const EdgeInsets.fromLTRB(24, 62, 24, 32),
-              keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
-              child: Center(
-                child: ConstrainedBox(
-                  constraints: const BoxConstraints(maxWidth: 460),
-                  child: Form(
-                    key: _formKey,
-                    child: AutofillGroup(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Center(
-                            child: Container(
-                              width: 104,
-                              height: 104,
-                              padding: const EdgeInsets.all(12),
-                              decoration: BoxDecoration(
-                                color: AppTheme.surface,
-                                borderRadius: AppTheme.borderRadiusLg,
-                                border: Border.all(color: AppTheme.divider),
-                              ),
-                              child: Image.asset('assets/icon.png'),
-                            ),
+    return AuthShell(
+      title: lang.getText('Welcome back', 'Selamat kembali'),
+      subtitle: lang.getText(
+        'Your prayers, Quran and community in one calm place.',
+        'Solat, al-Quran dan komuniti anda dalam satu ruang yang tenang.',
+      ),
+      languageLabel: lang.isEnglish ? 'BM' : 'EN',
+      onToggleLanguage: lang.toggleLanguage,
+      child: Form(
+        key: _formKey,
+        child: AutofillGroup(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              TextFormField(
+                controller: _identifierController,
+                autofillHints: const [
+                  AutofillHints.username,
+                  AutofillHints.email,
+                ],
+                keyboardType: TextInputType.emailAddress,
+                textInputAction: TextInputAction.next,
+                autocorrect: false,
+                decoration: InputDecoration(
+                  labelText: lang.getText(
+                    'Email or full name',
+                    'Emel atau nama penuh',
+                  ),
+                  prefixIcon: const Icon(CupertinoIcons.person),
+                ),
+                validator: (value) => (value?.trim().isEmpty ?? true)
+                    ? lang.getText(
+                        'Enter your email or full name.',
+                        'Masukkan emel atau nama penuh.',
+                      )
+                    : null,
+              ),
+              const SizedBox(height: 14),
+              TextFormField(
+                controller: _passwordController,
+                autofillHints: const [AutofillHints.password],
+                obscureText: _obscurePassword,
+                textInputAction: TextInputAction.done,
+                onFieldSubmitted: (_) => _login(lang),
+                decoration: InputDecoration(
+                  labelText: lang.getText('Password', 'Kata laluan'),
+                  prefixIcon: const Icon(CupertinoIcons.lock),
+                  suffixIcon: IconButton(
+                    tooltip: _obscurePassword
+                        ? lang.getText('Show password', 'Tunjukkan kata laluan')
+                        : lang.getText(
+                            'Hide password',
+                            'Sembunyikan kata laluan',
                           ),
-                          const SizedBox(height: 30),
-                          Text(
-                            lang.getText('Welcome back', 'Selamat kembali'),
-                            style: const TextStyle(
-                              fontSize: 32,
-                              fontWeight: FontWeight.w800,
-                              letterSpacing: -1,
-                            ),
-                          ),
-                          const SizedBox(height: 8),
-                          Text(
-                            lang.getText(
-                              'Your prayers, Quran and community in one calm place.',
-                              'Solat, al-Quran dan komuniti anda dalam satu ruang yang tenang.',
-                            ),
-                            style: const TextStyle(
-                              color: AppTheme.textSecondary,
-                              fontSize: 15,
-                              height: 1.45,
-                            ),
-                          ),
-                          const SizedBox(height: 30),
-                          TextFormField(
-                            controller: _identifierController,
-                            autofillHints: const [
-                              AutofillHints.username,
-                              AutofillHints.email,
-                            ],
-                            keyboardType: TextInputType.emailAddress,
-                            textInputAction: TextInputAction.next,
-                            autocorrect: false,
-                            decoration: InputDecoration(
-                              labelText: lang.getText(
-                                'Email or full name',
-                                'Emel atau nama penuh',
-                              ),
-                              prefixIcon: const Icon(CupertinoIcons.person),
-                            ),
-                            validator: (value) =>
-                                (value?.trim().isEmpty ?? true)
-                                ? lang.getText(
-                                    'Enter your email or full name.',
-                                    'Masukkan emel atau nama penuh.',
-                                  )
-                                : null,
-                          ),
-                          const SizedBox(height: 14),
-                          TextFormField(
-                            controller: _passwordController,
-                            autofillHints: const [AutofillHints.password],
-                            obscureText: _obscurePassword,
-                            textInputAction: TextInputAction.done,
-                            onFieldSubmitted: (_) => _login(lang),
-                            decoration: InputDecoration(
-                              labelText: lang.getText(
-                                'Password',
-                                'Kata laluan',
-                              ),
-                              prefixIcon: const Icon(CupertinoIcons.lock),
-                              suffixIcon: IconButton(
-                                tooltip: _obscurePassword
-                                    ? lang.getText(
-                                        'Show password',
-                                        'Tunjukkan kata laluan',
-                                      )
-                                    : lang.getText(
-                                        'Hide password',
-                                        'Sembunyikan kata laluan',
-                                      ),
-                                onPressed: () => setState(
-                                  () => _obscurePassword = !_obscurePassword,
-                                ),
-                                icon: Icon(
-                                  _obscurePassword
-                                      ? CupertinoIcons.eye
-                                      : CupertinoIcons.eye_slash,
-                                ),
-                              ),
-                            ),
-                            validator: (value) => (value?.length ?? 0) < 6
-                                ? lang.getText(
-                                    'Password must contain at least 6 characters.',
-                                    'Kata laluan mesti mengandungi sekurang-kurangnya 6 aksara.',
-                                  )
-                                : null,
-                          ),
-                          const SizedBox(height: 22),
-                          SizedBox(
-                            width: double.infinity,
-                            child: FilledButton(
-                              onPressed: _isLoading ? null : () => _login(lang),
-                              child: _isLoading
-                                  ? const SizedBox.square(
-                                      dimension: 20,
-                                      child: CircularProgressIndicator(
-                                        strokeWidth: 2,
-                                        color: AppTheme.textOnPrimary,
-                                      ),
-                                    )
-                                  : Text(lang.getText('Sign in', 'Log masuk')),
-                            ),
-                          ),
-                          const SizedBox(height: 16),
-                          Center(
-                            child: TextButton(
-                              onPressed: _isLoading
-                                  ? null
-                                  : () => Navigator.push(
-                                      context,
-                                      CupertinoPageRoute<void>(
-                                        builder: (_) => const SignUpScreen(),
-                                      ),
-                                    ),
-                              child: Text(
-                                lang.getText(
-                                  'New to Al Fajr? Create an account',
-                                  'Baharu di Al Fajr? Cipta akaun',
-                                ),
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
+                    onPressed: () =>
+                        setState(() => _obscurePassword = !_obscurePassword),
+                    icon: Icon(
+                      _obscurePassword
+                          ? CupertinoIcons.eye
+                          : CupertinoIcons.eye_slash,
                     ),
                   ),
                 ),
+                validator: (value) => (value?.length ?? 0) < 6
+                    ? lang.getText(
+                        'Password must contain at least 6 characters.',
+                        'Kata laluan mesti mengandungi sekurang-kurangnya 6 aksara.',
+                      )
+                    : null,
+              ),
+              Align(
+                alignment: AlignmentDirectional.centerEnd,
+                child: TextButton(
+                  onPressed: _isLoading ? null : () => _resetPassword(lang),
+                  child: Text(
+                    lang.getText('Forgot password?', 'Lupa kata laluan?'),
+                    style: const TextStyle(fontSize: 13),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 6),
+              FilledButton(
+                onPressed: _isLoading ? null : () => _login(lang),
+                child: _isLoading
+                    ? const SizedBox.square(
+                        dimension: 20,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          color: AppTheme.textOnPrimary,
+                        ),
+                      )
+                    : Text(lang.getText('Sign in', 'Log masuk')),
+              ),
+              const SizedBox(height: 18),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Text(
+                    lang.getText('New to Al Fajr?', 'Baharu di Al Fajr?'),
+                    style: const TextStyle(
+                      color: AppTheme.textSecondary,
+                      fontSize: 14,
+                    ),
+                  ),
+                  TextButton(
+                    onPressed: _isLoading
+                        ? null
+                        : () => Navigator.push(
+                            context,
+                            CupertinoPageRoute<void>(
+                              builder: (_) => const SignUpScreen(),
+                            ),
+                          ),
+                    child: Text(lang.getText('Create account', 'Cipta akaun')),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// Asks for the address the reset link should go to, pre-filled with whatever
+/// was already typed into the sign-in field.
+class _ResetPasswordDialog extends StatefulWidget {
+  const _ResetPasswordDialog({required this.lang, required this.initialEmail});
+
+  final LanguageProvider lang;
+  final String initialEmail;
+
+  @override
+  State<_ResetPasswordDialog> createState() => _ResetPasswordDialogState();
+}
+
+class _ResetPasswordDialogState extends State<_ResetPasswordDialog> {
+  late final TextEditingController _controller = TextEditingController(
+    text: widget.initialEmail,
+  );
+  final _formKey = GlobalKey<FormState>();
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  void _submit() {
+    if (!(_formKey.currentState?.validate() ?? false)) return;
+    Navigator.pop(context, _controller.text.trim());
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final lang = widget.lang;
+    return AlertDialog(
+      title: Text(lang.getText('Reset password', 'Tetapkan semula kata laluan')),
+      content: Form(
+        key: _formKey,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              lang.getText(
+                'We will email you a link to choose a new password.',
+                'Kami akan menghantar pautan untuk memilih kata laluan baharu.',
+              ),
+              style: const TextStyle(
+                color: AppTheme.textSecondary,
+                fontSize: 13,
+                height: 1.4,
               ),
             ),
-            Positioned(
-              top: 8,
-              right: 18,
-              child: Semantics(
-                button: true,
-                label: lang.getText('Change language', 'Tukar bahasa'),
-                child: CupertinoButton(
-                  padding: const EdgeInsets.symmetric(horizontal: 14),
-                  minimumSize: const Size(44, 44),
-                  color: AppTheme.surface,
-                  borderRadius: AppTheme.borderRadiusLg,
-                  onPressed: lang.toggleLanguage,
-                  child: Text(
-                    lang.isEnglish ? 'BM' : 'EN',
-                    style: const TextStyle(
-                      color: AppTheme.primaryGreen,
-                      fontWeight: FontWeight.w700,
-                    ),
-                  ),
-                ),
+            const SizedBox(height: 16),
+            TextFormField(
+              controller: _controller,
+              autofocus: true,
+              keyboardType: TextInputType.emailAddress,
+              autocorrect: false,
+              textInputAction: TextInputAction.done,
+              onFieldSubmitted: (_) => _submit(),
+              decoration: InputDecoration(
+                labelText: lang.getText('Email', 'Emel'),
+                prefixIcon: const Icon(CupertinoIcons.mail),
               ),
+              validator: (value) =>
+                  RegExp(r'^[^@\s]+@[^@\s]+\.[^@\s]+$').hasMatch(
+                    value?.trim() ?? '',
+                  )
+                  ? null
+                  : lang.getText(
+                      'Enter a valid email address.',
+                      'Masukkan alamat emel yang sah.',
+                    ),
             ),
           ],
         ),
       ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(context),
+          child: Text(lang.getText('Cancel', 'Batal')),
+        ),
+        FilledButton(
+          onPressed: _submit,
+          child: Text(lang.getText('Send link', 'Hantar pautan')),
+        ),
+      ],
     );
   }
 }
