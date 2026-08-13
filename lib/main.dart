@@ -8,13 +8,14 @@ import 'home_screen.dart';
 import 'login_screen.dart';
 import 'firebase_options.dart';
 import 'notification_service.dart';
+import 'prayer_times_repository.dart';
 import 'splash_screen.dart';
 import 'theme.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
-  
+
   // Initialize notification plugins and permissions hooks
   await NotificationService().init();
 
@@ -35,6 +36,7 @@ class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
+      title: 'Al Fajr',
       debugShowCheckedModeBanner: false,
       theme: AppTheme.lightTheme,
       themeMode: ThemeMode.light,
@@ -43,8 +45,30 @@ class MyApp extends StatelessWidget {
   }
 }
 
-class AuthWrapper extends StatelessWidget {
+class AuthWrapper extends StatefulWidget {
   const AuthWrapper({super.key});
+
+  @override
+  State<AuthWrapper> createState() => _AuthWrapperState();
+}
+
+class _AuthWrapperState extends State<AuthWrapper> {
+  String? _scheduledForUserId;
+
+  void _scheduleFor(User user, AdminProfileProvider profile) {
+    if (_scheduledForUserId == user.uid) return;
+    _scheduledForUserId = user.uid;
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      await profile.fetchProfile();
+      try {
+        final timings = await PrayerTimesRepository.fetchKualaLumpur();
+        await NotificationService().scheduleAllPrayers(timings);
+      } catch (error) {
+        debugPrint('Unable to refresh prayer notifications: $error');
+        _scheduledForUserId = null;
+      }
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -52,29 +76,19 @@ class AuthWrapper extends StatelessWidget {
       stream: FirebaseAuth.instance.authStateChanges(),
       builder: (context, snapshot) {
         if (snapshot.connectionState == ConnectionState.waiting) {
-          return const Scaffold(body: Center(child: CircularProgressIndicator()));
+          return const Scaffold(
+            body: Center(child: CircularProgressIndicator.adaptive()),
+          );
         }
-        
+
         // If the user is authenticated, handle scheduling and send them to the Dashboard
         if (snapshot.hasData) {
-          // AUTOMATION FIX: Trigger the scheduling engine as soon as the user is authenticated.
-          // Replace this hardcoded map with your actual prayer calculation database/API output map.
-          WidgetsBinding.instance.addPostFrameCallback((_) async {
-            Map<String, String> currentPrayerTimes = {
-              'Fajr': '05:46',
-              'Dhuhr': '13:05',
-              'Asr': '16:29',
-              'Maghrib': '19:15',
-              'Isha': '20:28',
-            };
-
-            debugPrint("AuthWrapper: User detected. Automating background prayer registration queue...");
-            await NotificationService().scheduleAllPrayers(currentPrayerTimes);
-          });
-
-          return const MainDashboard(); 
+          _scheduleFor(snapshot.data!, context.read<AdminProfileProvider>());
+          return const MainDashboard();
         }
-        
+
+        _scheduledForUserId = null;
+
         // Otherwise, show the Login Screen
         return const LoginScreen();
       },

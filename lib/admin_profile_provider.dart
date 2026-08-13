@@ -22,20 +22,23 @@ class AdminProfileProvider extends ChangeNotifier {
 
   Future<void> fetchProfile() async {
     final user = FirebaseAuth.instance.currentUser;
-    if (user != null) {
-      try {
-        final doc = await FirebaseFirestore.instance.collection('users').doc(user.uid).get();
-        if (doc.exists) {
-          final data = doc.data()!;
-          _masjidName = data['masjidName'];
-          _state = data['state'];
-          _masjidID = data['masjidID'];
-          _role = data['role'];
-          notifyListeners();
-        }
-      } catch (e) {
-        debugPrint("Fetch Profile Error: $e");
-      }
+    if (user == null) {
+      clearProfile();
+      return;
+    }
+    try {
+      final doc = await FirebaseFirestore.instance
+          .collection('users')
+          .doc(user.uid)
+          .get();
+      final data = doc.data();
+      _masjidName = data?['masjidName']?.toString();
+      _state = data?['state']?.toString();
+      _masjidID = data?['masjidID']?.toString();
+      _role = data?['role']?.toString() ?? 'user';
+      notifyListeners();
+    } catch (e) {
+      debugPrint("Fetch Profile Error: $e");
     }
   }
 
@@ -43,13 +46,12 @@ class AdminProfileProvider extends ChangeNotifier {
     final user = FirebaseAuth.instance.currentUser;
     if (user != null) {
       try {
-        await FirebaseFirestore.instance.collection('users').doc(user.uid).update({
-          'masjidID': id,
-          'masjidName': name,
-          'state': state,
-        });
+        await FirebaseFirestore.instance
+            .collection('users')
+            .doc(user.uid)
+            .update({'masjidID': id, 'masjidName': name, 'state': state});
         // Refresh local variables and notify listeners
-        await fetchProfile(); 
+        await fetchProfile();
       } catch (e) {
         debugPrint("Update Profile Error: $e");
         rethrow; // Pass error to UI so you can show a Snackbar if needed
