@@ -10,6 +10,7 @@ import 'package:provider/provider.dart';
 import 'admin_panel.dart';
 import 'calendar_screen.dart';
 import 'language_provider.dart';
+import 'notifications_settings_screen.dart';
 import 'qiblah_screen.dart';
 import 'prayer_times_repository.dart';
 import 'quran_screen.dart';
@@ -453,7 +454,11 @@ class _HeroHeader extends StatelessWidget {
                       ),
                       _HeaderButton(
                         icon: CupertinoIcons.bell_fill,
-                        onTap: () {},
+                        onTap: () => Navigator.of(context).push(
+                          MaterialPageRoute<void>(
+                            builder: (_) => const NotificationSettingsScreen(),
+                          ),
+                        ),
                       ),
                     ],
                   ),

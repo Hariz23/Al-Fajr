@@ -135,12 +135,106 @@ class _QiblahScreenState extends State<QiblahScreen> {
                   ),
                   _QiblatHeaderButton(
                     icon: CupertinoIcons.question_circle_fill,
-                    onTap: () {},
+                    onTap: () => _showCalibrationHelp(lang),
                   ),
                 ],
               ),
             ),
             Expanded(child: _buildBody(lang)),
+          ],
+        ),
+      ),
+    );
+  }
+
+
+  Future<void> _showCalibrationHelp(LanguageProvider lang) {
+    return showModalBottomSheet<void>(
+      context: context,
+      backgroundColor: AppTheme.surface,
+      showDragHandle: true,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(26)),
+      ),
+      builder: (context) => Padding(
+        padding: const EdgeInsets.fromLTRB(22, 4, 22, 34),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              lang.getText('Using the compass', 'Menggunakan kompas'),
+              style: const TextStyle(
+                fontSize: 22,
+                fontWeight: FontWeight.w800,
+                letterSpacing: -0.5,
+              ),
+            ),
+            const SizedBox(height: 14),
+            for (final step in [
+              (
+                CupertinoIcons.device_phone_portrait,
+                lang.getText(
+                  'Hold the phone flat, screen facing up.',
+                  'Pegang telefon rata, skrin menghadap ke atas.',
+                ),
+              ),
+              (
+                CupertinoIcons.arrow_2_circlepath,
+                lang.getText(
+                  'Move it in a figure of eight a few times to calibrate.',
+                  'Gerakkan dalam bentuk angka lapan beberapa kali untuk menentukur.',
+                ),
+              ),
+              (
+                CupertinoIcons.wifi_slash,
+                lang.getText(
+                  'Step away from metal, magnets and speakers — they pull the reading off.',
+                  'Jauhi logam, magnet dan pembesar suara — ia mengganggu bacaan.',
+                ),
+              ),
+              (
+                CupertinoIcons.location_north_line,
+                lang.getText(
+                  'Turn until the needle sits on the marker; that is the qiblah.',
+                  'Pusing sehingga jarum berada pada penanda; itulah arah kiblat.',
+                ),
+              ),
+            ]) ...[
+              Padding(
+                padding: const EdgeInsets.only(bottom: 14),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Container(
+                      width: 36,
+                      height: 36,
+                      alignment: Alignment.center,
+                      decoration: BoxDecoration(
+                        color: AppTheme.mint,
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Icon(
+                        step.$1,
+                        size: 18,
+                        color: AppTheme.primaryGreen,
+                      ),
+                    ),
+                    const SizedBox(width: 13),
+                    Expanded(
+                      child: Text(
+                        step.$2,
+                        style: const TextStyle(
+                          fontSize: 14,
+                          height: 1.4,
+                          color: AppTheme.textSecondary,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
           ],
         ),
       ),

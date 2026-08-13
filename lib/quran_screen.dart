@@ -6,7 +6,10 @@ import 'package:http/http.dart' as http;
 import 'package:just_audio/just_audio.dart';
 import 'package:provider/provider.dart';
 
+import 'app_ui.dart';
 import 'language_provider.dart';
+import 'juz_data.dart';
+import 'quran_library.dart';
 import 'surah_data.dart';
 import 'theme.dart';
 
@@ -77,6 +80,41 @@ class _QuranScreenState extends State<QuranScreen> {
   void initState() {
     super.initState();
     _surahsFuture = _fetchSurahs();
+    _loadLibrary();
+  }
+
+  QuranMark? _lastRead;
+  List<QuranMark> _bookmarks = const [];
+
+  List<dynamic> _loadedSurahs = const [];
+
+  String _surahNameFor(int number) {
+    for (final item in _loadedSurahs) {
+      if (item is Map && item['number'] == number) {
+        return item['englishName'].toString();
+      }
+    }
+    return 'Surah $number';
+  }
+
+  Future<void> _loadLibrary() async {
+    final last = await QuranLibrary.lastRead();
+    final saved = await QuranLibrary.bookmarks();
+    if (!mounted) return;
+    setState(() {
+      _lastRead = last;
+      _bookmarks = saved;
+    });
+  }
+
+  /// Reading state changes inside the surah view, so refresh on the way back.
+  Future<void> _openSurah(int number, String name) async {
+    await Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => SurahDetailView(surahNumber: number, surahName: name),
+      ),
+    );
+    await _loadLibrary();
   }
 
   Future<List<dynamic>> _fetchSurahs() async {
@@ -122,13 +160,10 @@ class _QuranScreenState extends State<QuranScreen> {
                           ),
                         ),
                         _RoundAction(
-                          icon: CupertinoIcons.bookmark_fill,
-                          onTap: () {},
-                        ),
-                        const SizedBox(width: 9),
-                        _RoundAction(
-                          icon: CupertinoIcons.ellipsis,
-                          onTap: () {},
+                          icon: _selectedSegment == 2
+                              ? CupertinoIcons.bookmark_fill
+                              : CupertinoIcons.bookmark,
+                          onTap: () => setState(() => _selectedSegment = 2),
                         ),
                       ],
                     ),
@@ -151,14 +186,14 @@ class _QuranScreenState extends State<QuranScreen> {
                     ),
                     const SizedBox(height: 18),
                     _ContinueReadingCard(
-                      onTap: () => Navigator.of(context).push(
-                        MaterialPageRoute(
-                          builder: (_) => const SurahDetailView(
-                            surahNumber: 2,
-                            surahName: 'Al-Baqarah',
-                          ),
-                        ),
-                      ),
+                      mark: _lastRead,
+                      onTap: () {
+                        final mark = _lastRead;
+                        _openSurah(
+                          mark?.surahNumber ?? 1,
+                          mark?.surahName ?? 'Al-Fatihah',
+                        );
+                      },
                     ),
                     const SizedBox(height: 21),
                     SizedBox(
@@ -230,6 +265,7 @@ class _QuranScreenState extends State<QuranScreen> {
                     );
                   }
 
+                  _loadedSurahs = snapshot.data!;
                   final surahs = snapshot.data!.where((item) {
                     if (_searchQuery.isEmpty) return true;
                     final englishName = item['englishName']
@@ -269,13 +305,9 @@ class _QuranScreenState extends State<QuranScreen> {
                               ? surah['englishNameTranslation']
                               : SurahData.malayNames[surah['number']] ??
                                     'Terjemahan',
-                          onTap: () => Navigator.of(context).push(
-                            MaterialPageRoute(
-                              builder: (_) => SurahDetailView(
-                                surahNumber: surah['number'],
-                                surahName: surah['englishName'],
-                              ),
-                            ),
+                          onTap: () => _openSurah(
+                            surah['number'] as int,
+                            surah['englishName'] as String,
                           ),
                         );
                       },
@@ -283,10 +315,48 @@ class _QuranScreenState extends State<QuranScreen> {
                   );
                 },
               )
-            else
-              SliverFillRemaining(
+            else if (_selectedSegment == 1)
+              SliverPadding(
+                padding: const EdgeInsets.fromLTRB(20, 0, 20, 110),
+                sliver: SliverList.separated(
+                  itemCount: JuzStart.all.length,
+                  separatorBuilder: (_, _) => const SizedBox(height: 9),
+                  itemBuilder: (context, index) {
+                    final juz = JuzStart.all[index];
+                    return _JuzRow(
+                      juz: juz,
+                      surahName: _surahNameFor(juz.surahNumber),
+                      onTap: () => _openSurah(
+                        juz.surahNumber,
+                        _surahNameFor(juz.surahNumber),
+                      ),
+                    );
+                  },
+                ),
+              )
+            else if (_bookmarks.isEmpty)
+              const SliverFillRemaining(
                 hasScrollBody: false,
-                child: _QuranEmptyState(isBookmarks: _selectedSegment == 2),
+                child: _QuranEmptyState(isBookmarks: true),
+              )
+            else
+              SliverPadding(
+                padding: const EdgeInsets.fromLTRB(20, 0, 20, 110),
+                sliver: SliverList.separated(
+                  itemCount: _bookmarks.length,
+                  separatorBuilder: (_, _) => const SizedBox(height: 9),
+                  itemBuilder: (context, index) {
+                    final mark = _bookmarks[index];
+                    return _BookmarkRow(
+                      mark: mark,
+                      onTap: () => _openSurah(mark.surahNumber, mark.surahName),
+                      onRemove: () async {
+                        await QuranLibrary.toggleBookmark(mark);
+                        await _loadLibrary();
+                      },
+                    );
+                  },
+                ),
               ),
           ],
         ),
@@ -368,8 +438,11 @@ class _QuranSearch extends StatelessWidget {
 
 class _ContinueReadingCard extends StatelessWidget {
   final VoidCallback onTap;
+  final QuranMark? mark;
 
-  const _ContinueReadingCard({required this.onTap});
+  const _ContinueReadingCard({required this.onTap, this.mark});
+
+  double? get progress => mark?.progress;
 
   @override
   Widget build(BuildContext context) {
@@ -443,9 +516,9 @@ class _ContinueReadingCard extends StatelessWidget {
                     ],
                   ),
                   const Spacer(),
-                  const Text(
-                    'Al-Baqarah',
-                    style: TextStyle(
+                  Text(
+                    mark?.surahName ?? 'Al-Fatihah',
+                    style: const TextStyle(
                       color: Colors.white,
                       fontSize: 21,
                       fontWeight: FontWeight.w700,
@@ -454,7 +527,10 @@ class _ContinueReadingCard extends StatelessWidget {
                   ),
                   const SizedBox(height: 3),
                   Text(
-                    'Ayah 255  ·  42% complete',
+                    mark == null
+                        ? 'Start from the beginning'
+                        : 'Ayah ${mark!.ayah}'
+                              '${progress == null ? '' : '  ·  ${(progress! * 100).round()}% complete'}',
                     style: TextStyle(
                       color: Colors.white.withValues(alpha: 0.67),
                       fontSize: 12,
@@ -466,7 +542,7 @@ class _ContinueReadingCard extends StatelessWidget {
                     child: ClipRRect(
                       borderRadius: BorderRadius.circular(3),
                       child: LinearProgressIndicator(
-                        value: 0.42,
+                        value: progress ?? 0,
                         minHeight: 4,
                         backgroundColor: Colors.white.withValues(alpha: 0.15),
                         valueColor: const AlwaysStoppedAnimation<Color>(
@@ -587,10 +663,166 @@ class _SurahRow extends StatelessWidget {
   }
 }
 
+class _JuzRow extends StatelessWidget {
+  const _JuzRow({
+    required this.juz,
+    required this.surahName,
+    required this.onTap,
+  });
+
+  final JuzStart juz;
+  final String surahName;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return CupertinoButton(
+      padding: EdgeInsets.zero,
+      onPressed: onTap,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 15, vertical: 14),
+        decoration: BoxDecoration(
+          color: AppTheme.surface,
+          borderRadius: BorderRadius.circular(18),
+          border: Border.all(color: AppTheme.divider),
+        ),
+        child: Row(
+          children: [
+            Container(
+              width: 42,
+              height: 42,
+              alignment: Alignment.center,
+              decoration: BoxDecoration(
+                color: AppTheme.mint,
+                borderRadius: BorderRadius.circular(13),
+              ),
+              child: Text(
+                '${juz.juz}',
+                style: const TextStyle(
+                  color: AppTheme.primaryGreen,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+            ),
+            const SizedBox(width: 13),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Juz ${juz.juz}',
+                    style: const TextStyle(
+                      color: AppTheme.textPrimary,
+                      fontSize: 15,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    'Begins at $surahName ${juz.surahNumber}:${juz.ayah}',
+                    style: const TextStyle(
+                      color: AppTheme.textSecondary,
+                      fontSize: 12,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const Icon(
+              CupertinoIcons.chevron_forward,
+              size: 16,
+              color: AppTheme.textSecondary,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _BookmarkRow extends StatelessWidget {
+  const _BookmarkRow({
+    required this.mark,
+    required this.onTap,
+    required this.onRemove,
+  });
+
+  final QuranMark mark;
+  final VoidCallback onTap;
+  final VoidCallback onRemove;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      decoration: BoxDecoration(
+        color: AppTheme.surface,
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: AppTheme.divider),
+      ),
+      child: Row(
+        children: [
+          Expanded(
+            child: CupertinoButton(
+              padding: const EdgeInsets.symmetric(
+                horizontal: 15,
+                vertical: 14,
+              ),
+              onPressed: onTap,
+              child: Row(
+                children: [
+                  const Icon(
+                    CupertinoIcons.bookmark_fill,
+                    size: 19,
+                    color: AppTheme.primaryGreen,
+                  ),
+                  const SizedBox(width: 13),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          mark.surahName,
+                          style: const TextStyle(
+                            color: AppTheme.textPrimary,
+                            fontSize: 15,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                        const SizedBox(height: 2),
+                        Text(
+                          'Ayah ${mark.ayah}  ·  ${mark.reference}',
+                          style: const TextStyle(
+                            color: AppTheme.textSecondary,
+                            fontSize: 12,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+          CupertinoButton(
+            padding: const EdgeInsets.symmetric(horizontal: 14),
+            minimumSize: const Size(44, 44),
+            onPressed: onRemove,
+            child: const Icon(
+              CupertinoIcons.delete,
+              size: 18,
+              color: AppTheme.textSecondary,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
 class _QuranEmptyState extends StatelessWidget {
   final bool isBookmarks;
 
-  const _QuranEmptyState({required this.isBookmarks});
+  const _QuranEmptyState({this.isBookmarks = true});
 
   @override
   Widget build(BuildContext context) {
@@ -608,14 +840,12 @@ class _QuranEmptyState extends StatelessWidget {
           ),
           const SizedBox(height: 12),
           Text(
-            isBookmarks
-                ? 'No saved verses yet'
-                : 'Juz navigation is coming soon',
+            'No saved verses yet',
             style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
           ),
           const SizedBox(height: 5),
           const Text(
-            'Your reading journey will appear here.',
+            'Tap the bookmark on any verse to keep it here.',
             style: TextStyle(color: AppTheme.textSecondary, fontSize: 13),
           ),
         ],
@@ -673,6 +903,8 @@ class SurahDetailView extends StatefulWidget {
 class _SurahDetailViewState extends State<SurahDetailView> {
   final AudioPlayer _audioPlayer = AudioPlayer();
   int? _playingAyahIndex;
+  Set<int> _bookmarked = {};
+  int? _totalAyahs;
 
   @override
   void initState() {
@@ -682,6 +914,50 @@ class _SurahDetailViewState extends State<SurahDetailView> {
         setState(() => _playingAyahIndex = null);
       }
     });
+    _loadBookmarks();
+  }
+
+  Future<void> _loadBookmarks() async {
+    final saved = await QuranLibrary.bookmarks();
+    if (!mounted) return;
+    setState(() {
+      _bookmarked = saved
+          .where((m) => m.surahNumber == widget.surahNumber)
+          .map((m) => m.ayah)
+          .toSet();
+    });
+  }
+
+  QuranMark _markFor(int ayah) => QuranMark(
+    surahNumber: widget.surahNumber,
+    surahName: widget.surahName,
+    ayah: ayah,
+    totalAyahs: _totalAyahs,
+  );
+
+  /// Reading position follows the last ayah the reader acted on, so the
+  /// Continue reading card points somewhere they actually were.
+  void _rememberPosition(int ayah) {
+    QuranLibrary.setLastRead(_markFor(ayah));
+  }
+
+  Future<void> _toggleBookmark(int ayah) async {
+    final nowSaved = await QuranLibrary.toggleBookmark(_markFor(ayah));
+    _rememberPosition(ayah);
+    if (!mounted) return;
+    setState(() {
+      if (nowSaved) {
+        _bookmarked.add(ayah);
+      } else {
+        _bookmarked.remove(ayah);
+      }
+    });
+    showAppMessage(
+      context,
+      nowSaved
+          ? 'Saved ${widget.surahName} ${'$ayah'}'
+          : 'Removed ${widget.surahName} ${'$ayah'}',
+    );
   }
 
   @override
@@ -766,6 +1042,13 @@ class _SurahDetailViewState extends State<SurahDetailView> {
           final translatedAyahs =
               snapshot.data!['data'][1]['ayahs'] as List<dynamic>;
 
+          if (_totalAyahs != arabicAyahs.length) {
+            _totalAyahs = arabicAyahs.length;
+            // Opening a surah counts as being at its first ayah until the
+            // reader acts on a later one.
+            _rememberPosition(1);
+          }
+
           return ListView.builder(
             physics: const BouncingScrollPhysics(),
             padding: const EdgeInsets.fromLTRB(16, 14, 16, 32),
@@ -841,7 +1124,26 @@ class _SurahDetailViewState extends State<SurahDetailView> {
                         CupertinoButton(
                           padding: EdgeInsets.zero,
                           minimumSize: const Size(34, 34),
-                          onPressed: () => _playAudio(arabic['number'], index),
+                          onPressed: () =>
+                              _toggleBookmark(arabic['numberInSurah'] as int),
+                          child: Icon(
+                            _bookmarked.contains(arabic['numberInSurah'])
+                                ? CupertinoIcons.bookmark_fill
+                                : CupertinoIcons.bookmark,
+                            color: AppTheme.primaryGreen,
+                            size: 22,
+                          ),
+                        ),
+                        const SizedBox(width: 4),
+                        CupertinoButton(
+                          padding: EdgeInsets.zero,
+                          minimumSize: const Size(34, 34),
+                          onPressed: () {
+                            _rememberPosition(
+                              arabic['numberInSurah'] as int,
+                            );
+                            _playAudio(arabic['number'], index);
+                          },
                           child: Icon(
                             _playingAyahIndex == index
                                 ? CupertinoIcons.pause_circle_fill
