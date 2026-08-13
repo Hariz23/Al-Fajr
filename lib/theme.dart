@@ -19,6 +19,18 @@ class AppTheme {
   static const Color mint = Color(0xFFE7F3ED);
   static const Color mintStrong = Color(0xFFCDE8DB);
   static const Color warmCream = Color(0xFFFAF5E9);
+
+  /// Accent/tint pairs used to distinguish the feature cards on the home
+  /// screen. Each `…Tint` is the card background, each accent is its icon.
+  static const Color accentGoldDeep = Color(0xFF8A6B26);
+  static const Color accentTeal = Color(0xFF316D6A);
+  static const Color tealTint = Color(0xFFE8F3F2);
+  static const Color accentClay = Color(0xFF9C5B55);
+  static const Color clayTint = Color(0xFFF7EBE9);
+
+  /// Ends of the header gradient, dark first.
+  static const Color headerGradientStart = Color(0xFF075D43);
+  static const Color headerGradientEnd = Color(0xFF0F7B58);
   static const Color paleGold = Color(0xFFF5EBD2);
 
   static const Color bgSoftWhite = Color(0xFFF4F6F5);

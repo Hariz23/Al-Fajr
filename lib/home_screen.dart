@@ -284,7 +284,7 @@ class _HomeScreenState extends State<HomeScreen> {
                             'Amalan harian',
                           ),
                           icon: CupertinoIcons.sparkles,
-                          color: const Color(0xFF8A6B26),
+                          color: AppTheme.accentGoldDeep,
                           background: AppTheme.warmCream,
                           onTap: () => Navigator.of(context).push(
                             CupertinoPageRoute(
@@ -296,8 +296,8 @@ class _HomeScreenState extends State<HomeScreen> {
                           title: lang.getText('Qiblat', 'Kiblat'),
                           subtitle: lang.getText('Find direction', 'Cari arah'),
                           icon: CupertinoIcons.location_north_fill,
-                          color: const Color(0xFF316D6A),
-                          background: const Color(0xFFE8F3F2),
+                          color: AppTheme.accentTeal,
+                          background: AppTheme.tealTint,
                           onTap: () => widget.onNavigate(2),
                         ),
                         _HomeAction(
@@ -307,8 +307,8 @@ class _HomeScreenState extends State<HomeScreen> {
                             'Kira dengan mudah',
                           ),
                           icon: CupertinoIcons.heart_fill,
-                          color: const Color(0xFF9C5B55),
-                          background: const Color(0xFFF7EBE9),
+                          color: AppTheme.accentClay,
+                          background: AppTheme.clayTint,
                           onTap: () => Navigator.of(context).push(
                             CupertinoPageRoute(
                               builder: (_) => const ZakatScreen(),
@@ -367,7 +367,7 @@ class _HeroHeader extends StatelessWidget {
         gradient: LinearGradient(
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
-          colors: [Color(0xFF075D43), Color(0xFF0F7B58)],
+          colors: [AppTheme.headerGradientStart, AppTheme.headerGradientEnd],
         ),
         borderRadius: BorderRadius.only(
           bottomLeft: Radius.circular(36),
