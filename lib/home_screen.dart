@@ -29,7 +29,13 @@ class MainDashboard extends StatefulWidget {
 class _MainDashboardState extends State<MainDashboard> {
   int _currentIndex = 0;
 
-  void _onNavigate(int index) => setState(() => _currentIndex = index);
+  /// Tabs the user has opened at least once. Their state is kept afterwards.
+  final Set<int> _visited = {0};
+
+  void _onNavigate(int index) => setState(() {
+    _currentIndex = index;
+    _visited.add(index);
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -51,12 +57,23 @@ class _MainDashboardState extends State<MainDashboard> {
           isAdmin = currentRole == 'admin' || currentRole == 'super_admin';
         }
 
+        // Built lazily. IndexedStack instantiates every child, so an eager
+        // list meant that signing in fired the Quran and prayer-times
+        // requests, the mosque listener and the compass/location stack all at
+        // once — including the location permission dialog, before the user had
+        // even opened the Qiblat tab.
         final screens = <Widget>[
-          HomeScreen(onNavigate: _onNavigate, isAdmin: isAdmin),
-          const QuranScreen(),
-          const QiblahScreen(),
-          const CalendarScreen(),
-          SettingsScreen(role: currentRole),
+          for (var i = 0; i < 5; i++)
+            if (!_visited.contains(i))
+              const SizedBox.shrink()
+            else
+              switch (i) {
+                0 => HomeScreen(onNavigate: _onNavigate, isAdmin: isAdmin),
+                1 => const QuranScreen(),
+                2 => const QiblahScreen(),
+                3 => const CalendarScreen(),
+                _ => SettingsScreen(role: currentRole),
+              },
         ];
 
         return Scaffold(

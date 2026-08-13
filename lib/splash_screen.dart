@@ -20,6 +20,9 @@ class _VideoSplashScreenState extends State<VideoSplashScreen> {
   Timer? _fallbackTimer;
   bool _hasNavigated = false;
   bool _failedToLoad = false;
+  // `mounted` is not enough: initialize() and play() can resolve after the
+  // fallback timer has already navigated away and disposed the controller.
+  bool _disposed = false;
 
   @override
   void initState() {
@@ -34,18 +37,19 @@ class _VideoSplashScreenState extends State<VideoSplashScreen> {
   Future<void> _initializeVideo() async {
     try {
       await _controller.initialize();
-      if (!mounted) return;
+      if (!mounted || _disposed) return;
       setState(() {});
+      if (_disposed) return;
       await _controller.play();
     } catch (_) {
-      if (!mounted) return;
+      if (!mounted || _disposed) return;
       setState(() => _failedToLoad = true);
       Timer(const Duration(milliseconds: 500), _continueToApp);
     }
   }
 
   void _videoListener() {
-    if (!_controller.value.isInitialized || _hasNavigated) return;
+    if (_disposed || !_controller.value.isInitialized || _hasNavigated) return;
     final duration = _controller.value.duration;
     if (duration == Duration.zero) return;
     if (_controller.value.position >=
@@ -65,6 +69,7 @@ class _VideoSplashScreenState extends State<VideoSplashScreen> {
 
   @override
   void dispose() {
+    _disposed = true;
     _fallbackTimer?.cancel();
     _controller
       ..removeListener(_videoListener)
