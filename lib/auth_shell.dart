@@ -31,43 +31,56 @@ class AuthShell extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppTheme.headerGradientStart,
-      body: Column(
-        children: [
-          _AuthHero(
-            title: title,
-            subtitle: subtitle,
-            languageLabel: languageLabel,
-            onToggleLanguage: onToggleLanguage,
-            showBackButton: showBackButton,
+      // The gradient fills the whole screen rather than just the hero, so the
+      // notches left by the sheet's rounded corners show the same green that
+      // sits directly above them. Painting only the hero exposed the scaffold
+      // colour there, which read as a second, conflicting green.
+      body: DecoratedBox(
+        decoration: const BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: [AppTheme.headerGradientStart, AppTheme.headerGradientEnd],
+            stops: [0, 0.45],
           ),
-          Expanded(
-            child: Container(
-              width: double.infinity,
-              decoration: const BoxDecoration(
-                color: AppTheme.bgSoftWhite,
-                borderRadius: BorderRadius.only(
-                  topLeft: Radius.circular(32),
-                  topRight: Radius.circular(32),
+        ),
+        child: Column(
+          children: [
+            _AuthHero(
+              title: title,
+              subtitle: subtitle,
+              languageLabel: languageLabel,
+              onToggleLanguage: onToggleLanguage,
+              showBackButton: showBackButton,
+            ),
+            Expanded(
+              child: Container(
+                width: double.infinity,
+                decoration: const BoxDecoration(
+                  color: AppTheme.bgSoftWhite,
+                  borderRadius: BorderRadius.only(
+                    topLeft: Radius.circular(32),
+                    topRight: Radius.circular(32),
+                  ),
                 ),
-              ),
-              child: SafeArea(
-                top: false,
-                child: SingleChildScrollView(
-                  padding: const EdgeInsets.fromLTRB(22, 26, 22, 28),
-                  keyboardDismissBehavior:
-                      ScrollViewKeyboardDismissBehavior.onDrag,
-                  child: Center(
-                    child: ConstrainedBox(
-                      constraints: const BoxConstraints(maxWidth: 460),
-                      child: child,
+                child: SafeArea(
+                  top: false,
+                  child: SingleChildScrollView(
+                    padding: const EdgeInsets.fromLTRB(22, 28, 22, 28),
+                    keyboardDismissBehavior:
+                        ScrollViewKeyboardDismissBehavior.onDrag,
+                    child: Center(
+                      child: ConstrainedBox(
+                        constraints: const BoxConstraints(maxWidth: 460),
+                        child: child,
+                      ),
                     ),
                   ),
                 ),
               ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
@@ -90,23 +103,17 @@ class _AuthHero extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return DecoratedBox(
-      decoration: const BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [AppTheme.headerGradientStart, AppTheme.headerGradientEnd],
-        ),
-      ),
-      child: Stack(
-        children: [
+    // The gradient is painted by AuthShell across the full screen; the hero
+    // only adds its decoration and content on top.
+    return Stack(
+      children: [
           const Positioned.fill(child: CustomPaint(painter: _AuthSkyPainter())),
           SafeArea(
             bottom: false,
             child: Padding(
               padding: const EdgeInsets.fromLTRB(22, 6, 18, 26),
               child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
+                crossAxisAlignment: CrossAxisAlignment.center,
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   SizedBox(
@@ -146,22 +153,25 @@ class _AuthHero extends StatelessWidget {
                       ],
                     ),
                   ),
-                  const SizedBox(height: 14),
-                  Container(
-                    width: 56,
-                    height: 56,
-                    padding: const EdgeInsets.all(9),
-                    decoration: BoxDecoration(
-                      // Solid, not translucent: the mark is green on
-                      // transparency and disappears against the hero.
-                      color: AppTheme.surface,
-                      borderRadius: BorderRadius.circular(18),
+                  const SizedBox(height: 18),
+                  Center(
+                    child: Container(
+                      width: 104,
+                      height: 104,
+                      padding: const EdgeInsets.all(14),
+                      decoration: BoxDecoration(
+                        // Solid, not translucent: the mark is green on
+                        // transparency and disappears against the hero.
+                        color: AppTheme.surface,
+                        borderRadius: BorderRadius.circular(30),
+                      ),
+                      child: Image.asset('assets/icon.png'),
                     ),
-                    child: Image.asset('assets/icon.png'),
                   ),
-                  const SizedBox(height: 16),
+                  const SizedBox(height: 20),
                   Text(
                     title,
+                    textAlign: TextAlign.center,
                     style: const TextStyle(
                       color: AppTheme.textOnPrimary,
                       fontSize: 30,
@@ -173,6 +183,7 @@ class _AuthHero extends StatelessWidget {
                   const SizedBox(height: 7),
                   Text(
                     subtitle,
+                    textAlign: TextAlign.center,
                     style: TextStyle(
                       color: AppTheme.textOnPrimary.withValues(alpha: 0.72),
                       fontSize: 14,
@@ -183,8 +194,7 @@ class _AuthHero extends StatelessWidget {
               ),
             ),
           ),
-        ],
-      ),
+      ],
     );
   }
 }
