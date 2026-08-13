@@ -247,7 +247,7 @@ class _HomeScreenState extends State<HomeScreen> {
                       ? lang.getText('Refreshing…', 'Mengemas kini…')
                       : _countdown(nextPrayer.value),
                   onOpenPrayers: () => Navigator.of(context).push(
-                    CupertinoPageRoute(builder: (_) => const SalatScreen()),
+                    MaterialPageRoute(builder: (_) => const SalatScreen()),
                   ),
                 ),
               ),
@@ -287,7 +287,7 @@ class _HomeScreenState extends State<HomeScreen> {
                           color: AppTheme.accentGoldDeep,
                           background: AppTheme.warmCream,
                           onTap: () => Navigator.of(context).push(
-                            CupertinoPageRoute(
+                            MaterialPageRoute(
                               builder: (_) => const ZikirDoaScreen(),
                             ),
                           ),
@@ -310,7 +310,7 @@ class _HomeScreenState extends State<HomeScreen> {
                           color: AppTheme.accentClay,
                           background: AppTheme.clayTint,
                           onTap: () => Navigator.of(context).push(
-                            CupertinoPageRoute(
+                            MaterialPageRoute(
                               builder: (_) => const ZakatScreen(),
                             ),
                           ),
@@ -323,7 +323,7 @@ class _HomeScreenState extends State<HomeScreen> {
                         onTap: masjidId == null
                             ? null
                             : () => Navigator.of(context).push(
-                                CupertinoPageRoute(
+                                MaterialPageRoute(
                                   builder: (_) => AdminPanel(
                                     masjidId: masjidId,
                                     masjidName: masjidName,

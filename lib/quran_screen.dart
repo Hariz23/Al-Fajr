@@ -152,7 +152,7 @@ class _QuranScreenState extends State<QuranScreen> {
                     const SizedBox(height: 18),
                     _ContinueReadingCard(
                       onTap: () => Navigator.of(context).push(
-                        CupertinoPageRoute(
+                        MaterialPageRoute(
                           builder: (_) => const SurahDetailView(
                             surahNumber: 2,
                             surahName: 'Al-Baqarah',
@@ -270,7 +270,7 @@ class _QuranScreenState extends State<QuranScreen> {
                               : SurahData.malayNames[surah['number']] ??
                                     'Terjemahan',
                           onTap: () => Navigator.of(context).push(
-                            CupertinoPageRoute(
+                            MaterialPageRoute(
                               builder: (_) => SurahDetailView(
                                 surahNumber: surah['number'],
                                 surahName: surah['englishName'],

@@ -59,7 +59,7 @@ class _VideoSplashScreenState extends State<VideoSplashScreen> {
     _hasNavigated = true;
     _fallbackTimer?.cancel();
     Navigator.of(context).pushReplacement(
-      CupertinoPageRoute<void>(builder: (_) => widget.nextScreen),
+      MaterialPageRoute<void>(builder: (_) => widget.nextScreen),
     );
   }
 

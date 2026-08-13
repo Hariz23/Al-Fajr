@@ -130,7 +130,7 @@ class SettingsScreen extends StatelessWidget {
                   ),
                   onTap: () => Navigator.push(
                     context,
-                    CupertinoPageRoute<void>(
+                    MaterialPageRoute<void>(
                       builder: (_) => const NotificationSettingsScreen(),
                     ),
                   ),
@@ -156,7 +156,7 @@ class SettingsScreen extends StatelessWidget {
                     ),
                     onTap: () => Navigator.push(
                       context,
-                      CupertinoPageRoute<void>(
+                      MaterialPageRoute<void>(
                         builder: (_) => const SuperAdminScreen(),
                       ),
                     ),

@@ -273,7 +273,7 @@ class _LoginScreenState extends State<LoginScreen> {
                         ? null
                         : () => Navigator.push(
                             context,
-                            CupertinoPageRoute<void>(
+                            MaterialPageRoute<void>(
                               builder: (_) => const SignUpScreen(),
                             ),
                           ),
