@@ -7,6 +7,7 @@ import 'package:provider/provider.dart';
 import 'app_ui.dart';
 import 'auth_shell.dart';
 import 'language_provider.dart';
+import 'password_field.dart';
 import 'theme.dart';
 
 class SignUpScreen extends StatefulWidget {
@@ -22,7 +23,6 @@ class _SignUpScreenState extends State<SignUpScreen> {
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
   bool _isLoading = false;
-  bool _obscurePassword = true;
 
   @override
   void dispose() {
@@ -188,35 +188,19 @@ class _SignUpScreenState extends State<SignUpScreen> {
                       ),
               ),
               const SizedBox(height: 14),
-              TextFormField(
+              AppPasswordField(
                 controller: _passwordController,
+                label: lang.getText('Password', 'Kata laluan'),
+                lang: lang,
+                showStrength: true,
                 autofillHints: const [AutofillHints.newPassword],
-                obscureText: _obscurePassword,
                 textInputAction: TextInputAction.done,
-                onFieldSubmitted: (_) => _signUp(lang),
-                decoration: InputDecoration(
-                  labelText: lang.getText('Password', 'Kata laluan'),
-                  prefixIcon: const Icon(CupertinoIcons.lock),
-                  suffixIcon: IconButton(
-                    tooltip: _obscurePassword
-                        ? lang.getText('Show password', 'Tunjukkan kata laluan')
-                        : lang.getText(
-                            'Hide password',
-                            'Sembunyikan kata laluan',
-                          ),
-                    onPressed: () =>
-                        setState(() => _obscurePassword = !_obscurePassword),
-                    icon: Icon(
-                      _obscurePassword
-                          ? CupertinoIcons.eye
-                          : CupertinoIcons.eye_slash,
-                    ),
-                  ),
-                ),
-                validator: (value) => (value?.length ?? 0) < 6
+                onSubmitted: () => _signUp(lang),
+                validator: (value) =>
+                    (value?.length ?? 0) < PasswordRules.minLength
                     ? lang.getText(
-                        'Use at least 6 characters.',
-                        'Gunakan sekurang-kurangnya 6 aksara.',
+                        'Use at least ${PasswordRules.minLength} characters.',
+                        'Gunakan sekurang-kurangnya ${PasswordRules.minLength} aksara.',
                       )
                     : null,
               ),

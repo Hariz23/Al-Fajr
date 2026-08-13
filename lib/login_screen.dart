@@ -7,6 +7,7 @@ import 'package:provider/provider.dart';
 import 'app_ui.dart';
 import 'auth_shell.dart';
 import 'language_provider.dart';
+import 'password_field.dart';
 import 'signup_screen.dart';
 import 'theme.dart';
 
@@ -22,7 +23,6 @@ class _LoginScreenState extends State<LoginScreen> {
   final _passwordController = TextEditingController();
   final _formKey = GlobalKey<FormState>();
   bool _isLoading = false;
-  bool _obscurePassword = true;
 
   @override
   void dispose() {
@@ -202,35 +202,18 @@ class _LoginScreenState extends State<LoginScreen> {
                     : null,
               ),
               const SizedBox(height: 14),
-              TextFormField(
+              AppPasswordField(
                 controller: _passwordController,
+                label: lang.getText('Password', 'Kata laluan'),
+                lang: lang,
                 autofillHints: const [AutofillHints.password],
-                obscureText: _obscurePassword,
                 textInputAction: TextInputAction.done,
-                onFieldSubmitted: (_) => _login(lang),
-                decoration: InputDecoration(
-                  labelText: lang.getText('Password', 'Kata laluan'),
-                  prefixIcon: const Icon(CupertinoIcons.lock),
-                  suffixIcon: IconButton(
-                    tooltip: _obscurePassword
-                        ? lang.getText('Show password', 'Tunjukkan kata laluan')
-                        : lang.getText(
-                            'Hide password',
-                            'Sembunyikan kata laluan',
-                          ),
-                    onPressed: () =>
-                        setState(() => _obscurePassword = !_obscurePassword),
-                    icon: Icon(
-                      _obscurePassword
-                          ? CupertinoIcons.eye
-                          : CupertinoIcons.eye_slash,
-                    ),
-                  ),
-                ),
-                validator: (value) => (value?.length ?? 0) < 6
+                onSubmitted: () => _login(lang),
+                validator: (value) =>
+                    (value?.length ?? 0) < PasswordRules.minLength
                     ? lang.getText(
-                        'Password must contain at least 6 characters.',
-                        'Kata laluan mesti mengandungi sekurang-kurangnya 6 aksara.',
+                        'Password must contain at least ${PasswordRules.minLength} characters.',
+                        'Kata laluan mesti mengandungi sekurang-kurangnya ${PasswordRules.minLength} aksara.',
                       )
                     : null,
               ),
