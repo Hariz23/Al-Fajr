@@ -663,6 +663,92 @@ class _SurahRow extends StatelessWidget {
   }
 }
 
+/// Play control for a single ayah.
+///
+/// Three states rather than two: idle, fetching the audio, and playing. The
+/// ring around the pause icon tracks position, so the end of a verse is
+/// visible before the icon flips back.
+class _AyahAudioButton extends StatelessWidget {
+  const _AyahAudioButton({
+    required this.isLoading,
+    required this.isPlaying,
+    required this.positionStream,
+    required this.duration,
+    required this.onTap,
+  });
+
+  final bool isLoading;
+  final bool isPlaying;
+  final Stream<Duration> positionStream;
+  final Duration? duration;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return CupertinoButton(
+      padding: EdgeInsets.zero,
+      minimumSize: const Size(38, 38),
+      onPressed: onTap,
+      child: SizedBox(
+        width: 32,
+        height: 32,
+        child: Stack(
+          alignment: Alignment.center,
+          children: [
+            if (isPlaying)
+              StreamBuilder<Duration>(
+                stream: positionStream,
+                builder: (context, snapshot) {
+                  final total = duration?.inMilliseconds ?? 0;
+                  final played = snapshot.data?.inMilliseconds ?? 0;
+                  return SizedBox(
+                    width: 32,
+                    height: 32,
+                    child: CircularProgressIndicator(
+                      value: total <= 0 ? null : (played / total).clamp(0.0, 1.0),
+                      strokeWidth: 2,
+                      backgroundColor: AppTheme.mintStrong,
+                      valueColor: const AlwaysStoppedAnimation(
+                        AppTheme.primaryGreen,
+                      ),
+                    ),
+                  );
+                },
+              ),
+            AnimatedSwitcher(
+              duration: const Duration(milliseconds: 220),
+              switchInCurve: Curves.easeOutBack,
+              switchOutCurve: Curves.easeIn,
+              transitionBuilder: (child, animation) => ScaleTransition(
+                scale: animation,
+                child: FadeTransition(opacity: animation, child: child),
+              ),
+              child: isLoading
+                  ? const SizedBox(
+                      key: ValueKey('loading'),
+                      width: 24,
+                      height: 24,
+                      child: CupertinoActivityIndicator(
+                        radius: 9,
+                        color: AppTheme.primaryGreen,
+                      ),
+                    )
+                  : Icon(
+                      isPlaying
+                          ? CupertinoIcons.pause_fill
+                          : CupertinoIcons.play_fill,
+                      key: ValueKey(isPlaying),
+                      color: AppTheme.primaryGreen,
+                      size: isPlaying ? 14 : 17,
+                    ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
 class _JuzRow extends StatelessWidget {
   const _JuzRow({
     required this.juz,
@@ -903,6 +989,25 @@ class SurahDetailView extends StatefulWidget {
 class _SurahDetailViewState extends State<SurahDetailView> {
   final AudioPlayer _audioPlayer = AudioPlayer();
   int? _playingAyahIndex;
+  /// Set while the mp3 is being fetched. Without it the button flipped to
+  /// "pause" the instant it was tapped and then sat silent until the network
+  /// caught up, which read as a glitch.
+  int? _loadingAyahIndex;
+
+  /// Held in state rather than created in build(). Calling _fetchAyahs()
+  /// inline meant every setState — pressing play, saving a bookmark — built a
+  /// fresh Future, refetched the whole surah and dropped the FutureBuilder
+  /// back to its spinner, wiping the list mid-interaction.
+  Future<Map<String, dynamic>>? _ayahsFuture;
+  bool? _loadedInEnglish;
+
+  Future<Map<String, dynamic>> _ayahsFor(bool isEnglish) {
+    if (_loadedInEnglish != isEnglish || _ayahsFuture == null) {
+      _loadedInEnglish = isEnglish;
+      _ayahsFuture = _fetchAyahs(isEnglish);
+    }
+    return _ayahsFuture!;
+  }
   Set<int> _bookmarked = {};
   int? _totalAyahs;
 
@@ -910,7 +1015,14 @@ class _SurahDetailViewState extends State<SurahDetailView> {
   void initState() {
     super.initState();
     _audioPlayer.playerStateStream.listen((state) {
-      if (state.processingState == ProcessingState.completed && mounted) {
+      if (!mounted) return;
+      if (state.processingState == ProcessingState.completed) {
+        setState(() {
+          _playingAyahIndex = null;
+          _loadingAyahIndex = null;
+        });
+      } else if (!state.playing && _playingAyahIndex != null) {
+        // Keep the button honest if playback stops for any other reason.
         setState(() => _playingAyahIndex = null);
       }
     });
@@ -984,17 +1096,28 @@ class _SurahDetailViewState extends State<SurahDetailView> {
         if (mounted) setState(() => _playingAyahIndex = null);
         return;
       }
-      setState(() => _playingAyahIndex = index);
+      if (_loadingAyahIndex == index) return;
+
+      setState(() {
+        _loadingAyahIndex = index;
+        _playingAyahIndex = null;
+      });
       await _audioPlayer.setUrl(
         'https://cdn.islamic.network/quran/audio/128/ar.alafasy/$globalAyahNumber.mp3',
       );
+      if (!mounted || _loadingAyahIndex != index) return;
+      setState(() {
+        _loadingAyahIndex = null;
+        _playingAyahIndex = index;
+      });
       await _audioPlayer.play();
     } catch (_) {
       if (!mounted) return;
-      setState(() => _playingAyahIndex = null);
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Audio currently unavailable.')),
-      );
+      setState(() {
+        _playingAyahIndex = null;
+        _loadingAyahIndex = null;
+      });
+      showAppMessage(context, 'Audio currently unavailable.', isError: true);
     }
   }
 
@@ -1023,7 +1146,7 @@ class _SurahDetailViewState extends State<SurahDetailView> {
         ),
       ),
       body: FutureBuilder<Map<String, dynamic>>(
-        future: _fetchAyahs(lang.isEnglish),
+        future: _ayahsFor(lang.isEnglish),
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.waiting) {
             return const Center(
@@ -1135,22 +1258,17 @@ class _SurahDetailViewState extends State<SurahDetailView> {
                           ),
                         ),
                         const SizedBox(width: 4),
-                        CupertinoButton(
-                          padding: EdgeInsets.zero,
-                          minimumSize: const Size(34, 34),
-                          onPressed: () {
+                        _AyahAudioButton(
+                          isLoading: _loadingAyahIndex == index,
+                          isPlaying: _playingAyahIndex == index,
+                          positionStream: _audioPlayer.positionStream,
+                          duration: _audioPlayer.duration,
+                          onTap: () {
                             _rememberPosition(
                               arabic['numberInSurah'] as int,
                             );
                             _playAudio(arabic['number'], index);
                           },
-                          child: Icon(
-                            _playingAyahIndex == index
-                                ? CupertinoIcons.pause_circle_fill
-                                : CupertinoIcons.play_circle_fill,
-                            color: AppTheme.primaryGreen,
-                            size: 30,
-                          ),
                         ),
                       ],
                     ),
