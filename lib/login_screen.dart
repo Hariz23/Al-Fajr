@@ -170,8 +170,8 @@ class _LoginScreenState extends State<LoginScreen> {
         'Your prayers, Quran and community in one calm place.',
         'Solat, al-Quran dan komuniti anda dalam satu ruang yang tenang.',
       ),
-      languageLabel: lang.isEnglish ? 'BM' : 'EN',
-      onToggleLanguage: lang.toggleLanguage,
+      isEnglish: lang.isEnglish,
+      onLanguageChanged: lang.setEnglish,
       child: Form(
         key: _formKey,
         child: AutofillGroup(

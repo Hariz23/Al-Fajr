@@ -6,6 +6,7 @@ import 'package:provider/provider.dart';
 import 'admin_profile_provider.dart';
 import 'app_ui.dart';
 import 'language_provider.dart';
+import 'language_switch.dart';
 import 'notifications_settings_screen.dart';
 import 'super_admin_screen.dart';
 import 'theme.dart';
@@ -115,10 +116,9 @@ class SettingsScreen extends StatelessWidget {
                   icon: CupertinoIcons.globe,
                   title: lang.getText('Language', 'Bahasa'),
                   subtitle: lang.isEnglish ? 'English' : 'Bahasa Melayu',
-                  trailing: CupertinoSwitch(
-                    value: lang.isEnglish,
-                    activeTrackColor: AppTheme.primaryGreen,
-                    onChanged: (_) => lang.toggleLanguage(),
+                  trailing: LanguageSwitch(
+                    isEnglish: lang.isEnglish,
+                    onChanged: lang.setEnglish,
                   ),
                 ),
                 AppSettingsRow(

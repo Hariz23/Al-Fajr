@@ -29,8 +29,13 @@ class LanguageProvider extends ChangeNotifier {
     notifyListeners();
   }
 
-  Future<void> toggleLanguage() async {
-    _isEnglish = !_isEnglish;
+  Future<void> toggleLanguage() => setEnglish(!_isEnglish);
+
+  /// Selects a language outright. The segmented control picks a side rather
+  /// than flipping, so tapping the active one must be a no-op.
+  Future<void> setEnglish(bool value) async {
+    if (_isEnglish == value) return;
+    _isEnglish = value;
     final prefs = await SharedPreferences.getInstance();
     await prefs.setBool('isEnglish', _isEnglish);
     notifyListeners();

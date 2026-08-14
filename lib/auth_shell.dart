@@ -3,6 +3,7 @@ import 'dart:math' as math;
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 
+import 'language_switch.dart';
 import 'theme.dart';
 
 /// Shared frame for the sign-in and sign-up screens.
@@ -15,16 +16,16 @@ class AuthShell extends StatelessWidget {
     super.key,
     required this.title,
     required this.subtitle,
-    required this.languageLabel,
-    required this.onToggleLanguage,
+    required this.isEnglish,
+    required this.onLanguageChanged,
     required this.child,
     this.showBackButton = false,
   });
 
   final String title;
   final String subtitle;
-  final String languageLabel;
-  final VoidCallback onToggleLanguage;
+  final bool isEnglish;
+  final ValueChanged<bool> onLanguageChanged;
   final Widget child;
   final bool showBackButton;
 
@@ -49,8 +50,8 @@ class AuthShell extends StatelessWidget {
             _AuthHero(
               title: title,
               subtitle: subtitle,
-              languageLabel: languageLabel,
-              onToggleLanguage: onToggleLanguage,
+              isEnglish: isEnglish,
+              onLanguageChanged: onLanguageChanged,
               showBackButton: showBackButton,
             ),
             Expanded(
@@ -90,15 +91,15 @@ class _AuthHero extends StatelessWidget {
   const _AuthHero({
     required this.title,
     required this.subtitle,
-    required this.languageLabel,
-    required this.onToggleLanguage,
+    required this.isEnglish,
+    required this.onLanguageChanged,
     required this.showBackButton,
   });
 
   final String title;
   final String subtitle;
-  final String languageLabel;
-  final VoidCallback onToggleLanguage;
+  final bool isEnglish;
+  final ValueChanged<bool> onLanguageChanged;
   final bool showBackButton;
 
   @override
@@ -129,26 +130,10 @@ class _AuthHero extends StatelessWidget {
                             onPressed: () => Navigator.maybePop(context),
                           ),
                         const Spacer(),
-                        Semantics(
-                          button: true,
-                          label: 'Change language',
-                          child: CupertinoButton(
-                            padding: const EdgeInsets.symmetric(horizontal: 15),
-                            minimumSize: const Size(44, 36),
-                            borderRadius: BorderRadius.circular(18),
-                            color: AppTheme.textOnPrimary.withValues(
-                              alpha: 0.16,
-                            ),
-                            onPressed: onToggleLanguage,
-                            child: Text(
-                              languageLabel,
-                              style: const TextStyle(
-                                color: AppTheme.textOnPrimary,
-                                fontSize: 13,
-                                fontWeight: FontWeight.w700,
-                              ),
-                            ),
-                          ),
+                        LanguageSwitch(
+                          isEnglish: isEnglish,
+                          onChanged: onLanguageChanged,
+                          onDark: true,
                         ),
                       ],
                     ),

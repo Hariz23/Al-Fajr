@@ -112,8 +112,8 @@ class _SignUpScreenState extends State<SignUpScreen> {
         'Join the Al Fajr community.',
         'Sertai komuniti Al Fajr.',
       ),
-      languageLabel: lang.isEnglish ? 'BM' : 'EN',
-      onToggleLanguage: lang.toggleLanguage,
+      isEnglish: lang.isEnglish,
+      onLanguageChanged: lang.setEnglish,
       showBackButton: true,
       child: Form(
         key: _formKey,
