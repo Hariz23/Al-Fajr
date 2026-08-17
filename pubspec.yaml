@@ -31,6 +31,8 @@ dependencies:
   just_audio: ^0.10.5
   just_audio_background: ^0.0.1-beta.17
   video_player: ^2.9.0
+  speech_to_text: ^7.0.0
+  quran: ^1.4.1
 
 
 dev_dependencies:

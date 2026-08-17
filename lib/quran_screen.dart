@@ -5,6 +5,8 @@ import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:just_audio/just_audio.dart';
 import 'package:provider/provider.dart';
+import 'package:speech_to_text/speech_recognition_result.dart';
+import 'package:speech_to_text/speech_to_text.dart';
 
 import 'app_ui.dart';
 import 'language_provider.dart';
@@ -22,6 +24,12 @@ class QuranScreen extends StatefulWidget {
 
 class _QuranScreenState extends State<QuranScreen> {
   late Future<List<dynamic>> _surahsFuture;
+  
+  // 1. Added TextEditingController and SpeechToText variables
+  final TextEditingController _searchController = TextEditingController();
+  final SpeechToText _speechToText = SpeechToText();
+  bool _speechEnabled = false;
+
   String _searchQuery = '';
   int _selectedSegment = 0;
 
@@ -76,17 +84,47 @@ class _QuranScreenState extends State<QuranScreen> {
     },
   ];
 
+  QuranMark? _lastRead;
+  List<QuranMark> _bookmarks = const [];
+  List<dynamic> _loadedSurahs = const [];
+
   @override
   void initState() {
     super.initState();
     _surahsFuture = _fetchSurahs();
     _loadLibrary();
+    _initSpeech(); // Initialize speech on load
   }
 
-  QuranMark? _lastRead;
-  List<QuranMark> _bookmarks = const [];
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
+  }
 
-  List<dynamic> _loadedSurahs = const [];
+  // 2. Extracted Speech Methods
+  void _initSpeech() async {
+    _speechEnabled = await _speechToText.initialize();
+    if (mounted) setState(() {});
+  }
+
+  void _startListening() async {
+    await _speechToText.listen(onResult: _onSpeechResult);
+    setState(() {});
+  }
+
+  void _stopListening() async {
+    await _speechToText.stop();
+    setState(() {});
+  }
+
+  void _onSpeechResult(SpeechRecognitionResult result) {
+    setState(() {
+      final words = result.recognizedWords;
+      _searchController.text = words; // Show text in the search bar
+      _searchQuery = words.trim().toLowerCase(); // Trigger the search filter
+    });
+  }
 
   String _surahNameFor(int number) {
     for (final item in _loadedSurahs) {
@@ -107,7 +145,6 @@ class _QuranScreenState extends State<QuranScreen> {
     });
   }
 
-  /// Reading state changes inside the surah view, so refresh on the way back.
   Future<void> _openSurah(int number, String name) async {
     await Navigator.of(context).push(
       MaterialPageRoute(
@@ -179,11 +216,27 @@ class _QuranScreenState extends State<QuranScreen> {
                       ),
                     ),
                     const SizedBox(height: 20),
+                    
+                    // 3. Updated Search Widget integration
                     _QuranSearch(
+                      controller: _searchController,
+                      isListening: _speechToText.isListening,
+                      onMicPressed: () {
+                        if (!_speechEnabled) {
+                           showAppMessage(context, "Microphone permission denied", isError: true);
+                           return;
+                        }
+                        if (_speechToText.isNotListening) {
+                          _startListening();
+                        } else {
+                          _stopListening();
+                        }
+                      },
                       onChanged: (value) => setState(
                         () => _searchQuery = value.trim().toLowerCase(),
                       ),
                     ),
+                    
                     const SizedBox(height: 18),
                     _ContinueReadingCard(
                       mark: _lastRead,
@@ -391,10 +444,19 @@ class _RoundAction extends StatelessWidget {
   }
 }
 
+// 4. Updated _QuranSearch to receive the controller and mic actions
 class _QuranSearch extends StatelessWidget {
   final ValueChanged<String> onChanged;
+  final TextEditingController controller;
+  final VoidCallback onMicPressed;
+  final bool isListening;
 
-  const _QuranSearch({required this.onChanged});
+  const _QuranSearch({
+    required this.onChanged,
+    required this.controller,
+    required this.onMicPressed,
+    required this.isListening,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -406,6 +468,7 @@ class _QuranSearch extends StatelessWidget {
         border: Border.all(color: AppTheme.divider),
       ),
       child: CupertinoTextField(
+        controller: controller, // Bound to the speech controller
         onChanged: onChanged,
         padding: const EdgeInsets.symmetric(horizontal: 14),
         decoration: null,
@@ -423,12 +486,15 @@ class _QuranSearch extends StatelessWidget {
             color: AppTheme.textSecondary,
           ),
         ),
-        suffix: const Padding(
-          padding: EdgeInsets.only(right: 14),
+        suffix: CupertinoButton(
+          padding: const EdgeInsets.only(right: 14),
+          minSize: 0,
+          onPressed: onMicPressed,
           child: Icon(
-            CupertinoIcons.mic_fill,
-            size: 17,
-            color: AppTheme.primaryGreen,
+            // Change icon to show recording state
+            isListening ? CupertinoIcons.stop_circle_fill : CupertinoIcons.mic_fill,
+            size: 20,
+            color: isListening ? Colors.redAccent : AppTheme.primaryGreen,
           ),
         ),
       ),
@@ -663,11 +729,6 @@ class _SurahRow extends StatelessWidget {
   }
 }
 
-/// Play control for a single ayah.
-///
-/// Three states rather than two: idle, fetching the audio, and playing. The
-/// ring around the pause icon tracks position, so the end of a verse is
-/// visible before the icon flips back.
 class _AyahAudioButton extends StatelessWidget {
   const _AyahAudioButton({
     required this.isLoading,
@@ -989,15 +1050,8 @@ class SurahDetailView extends StatefulWidget {
 class _SurahDetailViewState extends State<SurahDetailView> {
   final AudioPlayer _audioPlayer = AudioPlayer();
   int? _playingAyahIndex;
-  /// Set while the mp3 is being fetched. Without it the button flipped to
-  /// "pause" the instant it was tapped and then sat silent until the network
-  /// caught up, which read as a glitch.
   int? _loadingAyahIndex;
 
-  /// Held in state rather than created in build(). Calling _fetchAyahs()
-  /// inline meant every setState — pressing play, saving a bookmark — built a
-  /// fresh Future, refetched the whole surah and dropped the FutureBuilder
-  /// back to its spinner, wiping the list mid-interaction.
   Future<Map<String, dynamic>>? _ayahsFuture;
   bool? _loadedInEnglish;
 
@@ -1022,7 +1076,6 @@ class _SurahDetailViewState extends State<SurahDetailView> {
           _loadingAyahIndex = null;
         });
       } else if (!state.playing && _playingAyahIndex != null) {
-        // Keep the button honest if playback stops for any other reason.
         setState(() => _playingAyahIndex = null);
       }
     });
@@ -1047,8 +1100,6 @@ class _SurahDetailViewState extends State<SurahDetailView> {
     totalAyahs: _totalAyahs,
   );
 
-  /// Reading position follows the last ayah the reader acted on, so the
-  /// Continue reading card points somewhere they actually were.
   void _rememberPosition(int ayah) {
     QuranLibrary.setLastRead(_markFor(ayah));
   }
@@ -1167,8 +1218,6 @@ class _SurahDetailViewState extends State<SurahDetailView> {
 
           if (_totalAyahs != arabicAyahs.length) {
             _totalAyahs = arabicAyahs.length;
-            // Opening a surah counts as being at its first ayah until the
-            // reader acts on a later one.
             _rememberPosition(1);
           }
 
