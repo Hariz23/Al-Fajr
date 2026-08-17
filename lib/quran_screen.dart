@@ -7,6 +7,7 @@ import 'package:just_audio/just_audio.dart';
 import 'package:provider/provider.dart';
 import 'package:speech_to_text/speech_recognition_result.dart';
 import 'package:speech_to_text/speech_to_text.dart';
+import 'package:quran/quran.dart';
 
 import 'app_ui.dart';
 import 'language_provider.dart';
@@ -1052,6 +1053,8 @@ class _SurahDetailViewState extends State<SurahDetailView> {
   int? _playingAyahIndex;
   int? _loadingAyahIndex;
 
+  Reciter _selectedReciter = Reciter.arAlafasy;
+
   Future<Map<String, dynamic>>? _ayahsFuture;
   bool? _loadedInEnglish;
 
@@ -1062,6 +1065,7 @@ class _SurahDetailViewState extends State<SurahDetailView> {
     }
     return _ayahsFuture!;
   }
+
   Set<int> _bookmarked = {};
   int? _totalAyahs;
 
@@ -1094,11 +1098,11 @@ class _SurahDetailViewState extends State<SurahDetailView> {
   }
 
   QuranMark _markFor(int ayah) => QuranMark(
-    surahNumber: widget.surahNumber,
-    surahName: widget.surahName,
-    ayah: ayah,
-    totalAyahs: _totalAyahs,
-  );
+        surahNumber: widget.surahNumber,
+        surahName: widget.surahName,
+        ayah: ayah,
+        totalAyahs: _totalAyahs,
+      );
 
   void _rememberPosition(int ayah) {
     QuranLibrary.setLastRead(_markFor(ayah));
@@ -1118,8 +1122,8 @@ class _SurahDetailViewState extends State<SurahDetailView> {
     showAppMessage(
       context,
       nowSaved
-          ? 'Saved ${widget.surahName} ${'$ayah'}'
-          : 'Removed ${widget.surahName} ${'$ayah'}',
+          ? 'Saved ${widget.surahName} $ayah'
+          : 'Removed ${widget.surahName} $ayah',
     );
   }
 
@@ -1153,9 +1157,14 @@ class _SurahDetailViewState extends State<SurahDetailView> {
         _loadingAyahIndex = index;
         _playingAyahIndex = null;
       });
-      await _audioPlayer.setUrl(
-        'https://cdn.islamic.network/quran/audio/128/ar.alafasy/$globalAyahNumber.mp3',
+
+      final audioUrl = getAudioURLByVerseNumber(
+        globalAyahNumber,
+        reciter: _selectedReciter,
       );
+
+      await _audioPlayer.setUrl(audioUrl);
+
       if (!mounted || _loadingAyahIndex != index) return;
       setState(() {
         _loadingAyahIndex = null;
@@ -1170,6 +1179,129 @@ class _SurahDetailViewState extends State<SurahDetailView> {
       });
       showAppMessage(context, 'Audio currently unavailable.', isError: true);
     }
+  }
+
+  void _showReciterBottomSheet(BuildContext context) {
+    final reciters = {
+      Reciter.arAlafasy: 'Alafasy',
+      Reciter.arHusary: 'Husary',
+      Reciter.arAhmedAjamy: 'Ahmed Al-Ajamy',
+      Reciter.arHudhaify: 'Hudhaify',
+      Reciter.arMaherMuaiqly: 'Maher Al Muaiqly',
+      Reciter.arMuhammadAyyoub: 'Muhammad Ayyoub',
+      Reciter.arMuhammadJibreel: 'Muhammad Jibreel',
+      Reciter.arMinshawi: 'Minshawi',
+      Reciter.arShaatree: 'Abu Bakr Ash-Shaatree',
+    };
+
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: AppTheme.bgSoftWhite,
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (BuildContext context) {
+        return SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.only(bottom: 16.0),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Container(
+                  margin: const EdgeInsets.only(top: 12, bottom: 16),
+                  height: 5,
+                  width: 40,
+                  decoration: BoxDecoration(
+                    color: AppTheme.divider,
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                ),
+                const Text(
+                  'Select Reciter',
+                  style: TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                    color: AppTheme.textPrimary,
+                  ),
+                ),
+                const SizedBox(height: 12),
+                Flexible(
+                  child: ListView.builder(
+                    shrinkWrap: true,
+                    physics: const BouncingScrollPhysics(),
+                    itemCount: reciters.length,
+                    itemBuilder: (context, index) {
+                      final reciter = reciters.keys.elementAt(index);
+                      final name = reciters.values.elementAt(index);
+                      final isSelected = _selectedReciter == reciter;
+
+                      return GestureDetector(
+                        onTap: () async {
+                          Navigator.pop(context);
+                          if (_selectedReciter == reciter) return;
+
+                          await _audioPlayer.stop();
+                          setState(() {
+                            _selectedReciter = reciter;
+                            _playingAyahIndex = null;
+                            _loadingAyahIndex = null;
+                          });
+                        },
+                        child: Container(
+                          margin: const EdgeInsets.symmetric(
+                            horizontal: 16,
+                            vertical: 6,
+                          ),
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 18,
+                            vertical: 16,
+                          ),
+                          decoration: BoxDecoration(
+                            color:
+                                isSelected ? AppTheme.mint : Colors.transparent,
+                            borderRadius: BorderRadius.circular(16),
+                            border: Border.all(
+                              color: isSelected
+                                  ? AppTheme.primaryGreen
+                                      .withValues(alpha: 0.3)
+                                  : Colors.transparent,
+                            ),
+                          ),
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              Text(
+                                name,
+                                style: TextStyle(
+                                  fontSize: 16,
+                                  fontWeight: isSelected
+                                      ? FontWeight.w600
+                                      : FontWeight.normal,
+                                  color: isSelected
+                                      ? AppTheme.primaryGreen
+                                      : AppTheme.textPrimary,
+                                ),
+                              ),
+                              if (isSelected)
+                                const Icon(
+                                  CupertinoIcons.checkmark_alt_circle_fill,
+                                  color: AppTheme.primaryGreen,
+                                  size: 22,
+                                ),
+                            ],
+                          ),
+                        ),
+                      );
+                    },
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
   }
 
   @override
@@ -1190,10 +1322,14 @@ class _SurahDetailViewState extends State<SurahDetailView> {
             fontWeight: FontWeight.w700,
           ),
         ),
-        trailing: const Icon(
-          CupertinoIcons.headphones,
-          size: 19,
-          color: AppTheme.primaryGreen,
+        trailing: CupertinoButton(
+          padding: EdgeInsets.zero,
+          onPressed: () => _showReciterBottomSheet(context),
+          child: const Icon(
+            CupertinoIcons.headphones,
+            size: 22,
+            color: AppTheme.primaryGreen,
+          ),
         ),
       ),
       body: FutureBuilder<Map<String, dynamic>>(
