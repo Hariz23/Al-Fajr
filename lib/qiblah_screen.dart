@@ -317,8 +317,8 @@ class _QiblahScreenState extends State<QiblahScreen> {
                         const SizedBox(height: 4),
                         Text(
                           normalizedTurn.abs() < 5
-                              ? 'Perfectly aligned'
-                              : 'Move your phone slowly for best accuracy',
+                              ? lang.getText('Perfectly aligned', 'Selari dengan sempurna')
+                              : lang.getText('Move your phone slowly for best accuracy', 'Gerakkan phone anda perlahan untuk akurasi terbaik'),
                           style: const TextStyle(
                             color: AppTheme.textSecondary,
                             fontSize: 11,
@@ -353,8 +353,8 @@ class _QiblahScreenState extends State<QiblahScreen> {
                               const SizedBox(width: 7),
                               Text(
                                 normalizedTurn.abs() < 5
-                                    ? 'Aligned'
-                                    : 'Calibrating',
+                                    ? lang.getText('Aligned', 'Selaras')
+                                    : lang.getText('Calibrating', 'Mengkalibrasi'),
                                 style: TextStyle(
                                   color: normalizedTurn.abs() < 5
                                       ? AppTheme.primaryGreen
@@ -396,17 +396,17 @@ class _QiblahScreenState extends State<QiblahScreen> {
                       color: AppTheme.mint,
                       borderRadius: BorderRadius.circular(20),
                     ),
-                    child: const Row(
+                    child: Row(
                       children: [
-                        Icon(
+                        const Icon(
                           CupertinoIcons.device_phone_portrait,
                           color: AppTheme.primaryGreen,
                           size: 21,
                         ),
-                        SizedBox(width: 12),
+                        const SizedBox(width: 12),
                         Expanded(
                           child: Text(
-                            'Keep your phone flat and away from metal objects for a more accurate reading.',
+                            lang.getText('Keep your phone flat and away from metal objects for a more accurate reading.', 'Letak phone anda rata dan jauhkan dari benda besi untuk pembacaan yang lebih akurat.'),
                             style: TextStyle(
                               color: AppTheme.textSecondary,
                               fontSize: 12,
