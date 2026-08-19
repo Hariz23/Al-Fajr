@@ -489,7 +489,7 @@ class _QuranSearch extends StatelessWidget {
         ),
         suffix: CupertinoButton(
           padding: const EdgeInsets.only(right: 14),
-          minSize: 0,
+          minimumSize: const Size(0, 0),
           onPressed: onMicPressed,
           child: Icon(
             // Change icon to show recording state
