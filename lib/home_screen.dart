@@ -380,6 +380,7 @@ class _HeroHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final lang = context.watch<LanguageProvider>();
     return Container(
       decoration: const BoxDecoration(
         gradient: LinearGradient(
@@ -482,7 +483,7 @@ class _HeroHeader extends StatelessWidget {
                                 ),
                                 const SizedBox(width: 7),
                                 Text(
-                                  'NEXT PRAYER',
+                                  lang.getText('NEXT PRAYER', 'SOLAT SETERUSNYA'),
                                   style: TextStyle(
                                     color: Colors.white.withValues(alpha: 0.62),
                                     fontSize: 11,
@@ -596,7 +597,7 @@ class _HeroHeader extends StatelessWidget {
                   Align(
                     alignment: Alignment.centerRight,
                     child: Text(
-                      'Tap to view all prayer times ›',
+                      lang.getText('Tap to view all prayer times ›',"Tekan untuk lihat semua waktu solat ›"),
                       style: TextStyle(
                         color: Colors.white.withValues(alpha: 0.46),
                         fontSize: 11,
