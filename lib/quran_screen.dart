@@ -257,18 +257,22 @@ class _QuranScreenState extends State<QuranScreen> {
                         thumbColor: AppTheme.surface,
                         backgroundColor: const Color(0xFFE8ECEA),
                         padding: const EdgeInsets.all(3),
-                        children: const {
-                          0: Padding(
+                        children: {
+                          0: const Padding(
                             padding: EdgeInsets.symmetric(vertical: 8),
                             child: Text('Surahs'),
                           ),
-                          1: Padding(
+                          1:Padding(
                             padding: EdgeInsets.symmetric(vertical: 8),
-                            child: Text('Juz'),
+                            child: Text(
+                              lang.getText('Juz', 'Juzuk'),
+                            ),
                           ),
                           2: Padding(
-                            padding: EdgeInsets.symmetric(vertical: 8),
-                            child: Text('Bookmarks'),
+                            padding: const EdgeInsets.symmetric(vertical: 8),
+                            child: Text(
+                          lang.getText('Bookmarks', 'Penanda'),
+                          ),
                           ),
                         },
                         onValueChanged: (value) {
@@ -282,7 +286,8 @@ class _QuranScreenState extends State<QuranScreen> {
                     Text(
                       _selectedSegment == 0
                           ? '114 Surahs'
-                          : (_selectedSegment == 1 ? '30 Juz' : 'Saved verses'),
+                          : lang.getText ((_selectedSegment == 1 ? '30 Juz' : 'Saved verses'),
+                              (_selectedSegment == 1 ? '30 Juzuk' : 'Ayat tersimpan')),
                       style: const TextStyle(
                         color: AppTheme.textPrimary,
                         fontSize: 19,
@@ -335,11 +340,11 @@ class _QuranScreenState extends State<QuranScreen> {
                   }).toList();
 
                   if (surahs.isEmpty) {
-                    return const SliverFillRemaining(
+                    return SliverFillRemaining(
                       hasScrollBody: false,
                       child: Center(
                         child: Text(
-                          'No surah found',
+                          lang.getText('No surah found', 'Surah tidak ditemukan'),
                           style: TextStyle(color: AppTheme.textSecondary),
                         ),
                       ),
@@ -461,6 +466,7 @@ class _QuranSearch extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final lang = context.watch<LanguageProvider>();
     return Container(
       height: 48,
       decoration: BoxDecoration(
@@ -473,7 +479,7 @@ class _QuranSearch extends StatelessWidget {
         onChanged: onChanged,
         padding: const EdgeInsets.symmetric(horizontal: 14),
         decoration: null,
-        placeholder: 'Search surah or verse',
+        placeholder: lang.getText('Search surah or verse', 'Cari surah atau ayat'),
         placeholderStyle: const TextStyle(
           color: AppTheme.textSecondary,
           fontSize: 14,
@@ -513,6 +519,7 @@ class _ContinueReadingCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final lang = context.watch<LanguageProvider>();
     return CupertinoButton(
       padding: EdgeInsets.zero,
       onPressed: onTap,
@@ -572,7 +579,7 @@ class _ContinueReadingCard extends StatelessWidget {
                       ),
                       const SizedBox(width: 7),
                       Text(
-                        'CONTINUE READING',
+                        lang.getText('CONTINUE READING', 'SAMBUNG PEMBACAAN'),
                         style: TextStyle(
                           color: Colors.white.withValues(alpha: 0.62),
                           fontSize: 10,
@@ -597,7 +604,7 @@ class _ContinueReadingCard extends StatelessWidget {
                     mark == null
                         ? 'Start from the beginning'
                         : 'Ayah ${mark!.ayah}'
-                              '${progress == null ? '' : '  ·  ${(progress! * 100).round()}% complete'}',
+                              '${progress == null ? '' : '  ·  ${(progress! * 100).round()}% ${lang.getText('complete', 'selesai')}'}',
                     style: TextStyle(
                       color: Colors.white.withValues(alpha: 0.67),
                       fontSize: 12,
@@ -824,6 +831,7 @@ class _JuzRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final lang = context.watch<LanguageProvider>();
     return CupertinoButton(
       padding: EdgeInsets.zero,
       onPressed: onTap,
@@ -858,7 +866,7 @@ class _JuzRow extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    'Juz ${juz.juz}',
+                    lang.getText('Juz ${juz.juz}', 'Juzuk ${juz.juz}'),
                     style: const TextStyle(
                       color: AppTheme.textPrimary,
                       fontSize: 15,
@@ -867,7 +875,7 @@ class _JuzRow extends StatelessWidget {
                   ),
                   const SizedBox(height: 2),
                   Text(
-                    'Begins at $surahName ${juz.surahNumber}:${juz.ayah}',
+                    lang.getText('(Begins at $surahName ${juz.surahNumber}:${juz.ayah})', "(Bermula pada $surahName ${juz.surahNumber}:${juz.ayah})"),
                     style: const TextStyle(
                       color: AppTheme.textSecondary,
                       fontSize: 12,
@@ -974,6 +982,7 @@ class _QuranEmptyState extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final lang = context.watch<LanguageProvider>();
     return Padding(
       padding: const EdgeInsets.only(bottom: 90),
       child: Column(
@@ -988,12 +997,12 @@ class _QuranEmptyState extends StatelessWidget {
           ),
           const SizedBox(height: 12),
           Text(
-            'No saved verses yet',
+            lang.getText('No saved verses yet', 'Belum ada ayat yang disimpan'),
             style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
           ),
           const SizedBox(height: 5),
-          const Text(
-            'Tap the bookmark on any verse to keep it here.',
+          Text(
+            lang.getText('Tap the bookmark on any verse to keep it here.', 'Ketuk penanda pada ayat mana pun untuk menyimpannya di sini.'),
             style: TextStyle(color: AppTheme.textSecondary, fontSize: 13),
           ),
         ],
