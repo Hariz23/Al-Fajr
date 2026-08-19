@@ -161,6 +161,23 @@ class _HomeScreenState extends State<HomeScreen> {
     'Isha': '20:36',
   };
 
+  String _getLocalizedPrayerName(String englishName, LanguageProvider lang) {
+    switch (englishName) {
+      case 'Fajr':
+        return lang.getText('Fajr', 'Subuh');
+      case 'Dhuhr':
+        return lang.getText('Dhuhr', 'Zohor');
+      case 'Asr':
+        return lang.getText('Asr', 'Asar');
+      case 'Maghrib':
+        return lang.getText('Maghrib', 'Maghrib');
+      case 'Isha':
+        return lang.getText('Isha', 'Isyak');
+      default:
+        return englishName;
+    }
+  }
+
   Map<String, dynamic>? prayerTimes;
 
   @override
@@ -253,9 +270,9 @@ class _HomeScreenState extends State<HomeScreen> {
                   masjidName: masjidName?.isNotEmpty == true
                       ? masjidName!
                       : 'Kuala Lumpur, Malaysia',
-                  nextPrayer:
-                      nextPrayer?.key ??
-                      lang.getText('Prayer times', 'Waktu solat'),
+                  nextPrayer: nextPrayer != null
+                      ? _getLocalizedPrayerName(nextPrayer.key, lang)
+                      : lang.getText('Prayer times', 'Waktu solat'),
                   nextPrayerTime: nextPrayer == null
                       ? '—'
                       : TimeOfDay.fromDateTime(
@@ -483,7 +500,10 @@ class _HeroHeader extends StatelessWidget {
                                 ),
                                 const SizedBox(width: 7),
                                 Text(
-                                  lang.getText('NEXT PRAYER', 'SOLAT SETERUSNYA'),
+                                  lang.getText(
+                                    'NEXT PRAYER',
+                                    'SOLAT SETERUSNYA',
+                                  ),
                                   style: TextStyle(
                                     color: Colors.white.withValues(alpha: 0.62),
                                     fontSize: 11,
@@ -597,7 +617,10 @@ class _HeroHeader extends StatelessWidget {
                   Align(
                     alignment: Alignment.centerRight,
                     child: Text(
-                      lang.getText('Tap to view all prayer times ›',"Tekan untuk lihat semua waktu solat ›"),
+                      lang.getText(
+                        'Tap to view all prayer times ›',
+                        "Tekan untuk lihat semua waktu solat ›",
+                      ),
                       style: TextStyle(
                         color: Colors.white.withValues(alpha: 0.46),
                         fontSize: 11,
