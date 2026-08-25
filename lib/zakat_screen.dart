@@ -1,7 +1,6 @@
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:url_launcher/url_launcher.dart';
 
 import 'app_ui.dart';
 import 'language_provider.dart';
@@ -23,10 +22,29 @@ class _ZakatScreenState extends State<ZakatScreen> {
   );
   final _monthlySalaryController = TextEditingController();
   final _otherAnnualIncomeController = TextEditingController();
-  final _zakatPaidController = TextEditingController();
+  final _carumanController = TextEditingController(); // Reverted from _zakatPaidController
 
   final List<_SavingsEntry> _savings = [_SavingsEntry(named: 'Account 1')];
   final List<_GoldEntry> _goldItems = [_GoldEntry()];
+
+  // State Selection Map
+  String? _selectedState;
+  final Map<String, WornGoldMethod> _stateMethods = {
+    'Selangor': WornGoldMethod.excess,
+    'Wilayah Persekutuan': WornGoldMethod.excess,
+    'Johor': WornGoldMethod.excess,
+    'Negeri Sembilan': WornGoldMethod.excess,
+    'Melaka': WornGoldMethod.full,
+    'Pulau Pinang': WornGoldMethod.full,
+    'Perak': WornGoldMethod.full,
+    'Perlis': WornGoldMethod.full,
+    'Pahang': WornGoldMethod.full,
+    'Kedah': WornGoldMethod.full,
+    'Terengganu': WornGoldMethod.excess,
+    'Kelantan': WornGoldMethod.excess,
+    'Sabah': WornGoldMethod.excess,
+    'Sarawak': WornGoldMethod.excess,
+  };
 
   int _section = 0;
   double _incomeZakat = 0;
@@ -45,7 +63,7 @@ class _ZakatScreenState extends State<ZakatScreen> {
     _wornUrufController.dispose();
     _monthlySalaryController.dispose();
     _otherAnnualIncomeController.dispose();
-    _zakatPaidController.dispose();
+    _carumanController.dispose();
     for (final entry in _savings) {
       entry.dispose();
     }
@@ -70,6 +88,11 @@ class _ZakatScreenState extends State<ZakatScreen> {
   }
 
   void _calculate() {
+    // Default to Selangor (excess) logic if dropdown is blank
+    final activeGoldMethod = _selectedState != null 
+        ? _stateMethods[_selectedState]! 
+        : WornGoldMethod.excess;
+
     var goldZakat = 0.0;
     for (final item in _goldItems) {
       goldZakat += ZakatCalculator.goldItem(
@@ -77,6 +100,7 @@ class _ZakatScreenState extends State<ZakatScreen> {
         pricePerGram: _goldPrice,
         isWorn: item.isWorn,
         wornUrufGrams: _wornUruf,
+        wornMethod: activeGoldMethod,
       );
     }
 
@@ -84,7 +108,7 @@ class _ZakatScreenState extends State<ZakatScreen> {
       _incomeZakat = ZakatCalculator.income(
         monthlySalary: _parse(_monthlySalaryController.text),
         otherAnnualIncome: _parse(_otherAnnualIncomeController.text),
-        alreadyPaid: _parse(_zakatPaidController.text),
+        caruman: _parse(_carumanController.text),
         nisab: _nisab,
       );
       _savingsZakat = ZakatCalculator.savings(
@@ -112,7 +136,10 @@ class _ZakatScreenState extends State<ZakatScreen> {
 
     _monthlySalaryController.clear();
     _otherAnnualIncomeController.clear();
-    _zakatPaidController.clear();
+    _carumanController.clear();
+    setState(() {
+      _selectedState = null;
+    });
     for (final entry in _savings.skip(1)) {
       entry.dispose();
     }
@@ -138,8 +165,8 @@ class _ZakatScreenState extends State<ZakatScreen> {
     return AppPage(
       title: lang.getText('Zakat estimate', 'Anggaran zakat'),
       subtitle: lang.getText(
-        'Wilayah Persekutuan reference method',
-        'Kaedah rujukan Wilayah Persekutuan',
+        'Calculated based on state fatwa',
+        'Dikira berdasarkan fatwa negeri',
       ),
       showBackButton: true,
       trailing: AppIconButton(
@@ -157,6 +184,8 @@ class _ZakatScreenState extends State<ZakatScreen> {
             lang: lang,
           ),
           const SizedBox(height: 16),
+          _stateSelectionCard(lang),
+          const SizedBox(height: 12),
           _referenceCard(lang),
           const SizedBox(height: 18),
           SizedBox(
@@ -184,34 +213,6 @@ class _ZakatScreenState extends State<ZakatScreen> {
               _ => _goldForm(lang),
             },
           ),
-          const SizedBox(height: 18),
-          AppSurface(
-            color: AppTheme.warmCream,
-            borderColor: AppTheme.paleGold,
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Icon(
-                  CupertinoIcons.info_circle_fill,
-                  color: AppTheme.warning,
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Text(
-                    lang.getText(
-                      'This is an estimate, not an official assessment. Eligibility can depend on haul, had kifayah and your state authority. Verify before paying.',
-                      'Ini ialah anggaran, bukan taksiran rasmi. Kelayakan boleh bergantung pada haul, had kifayah dan pihak berkuasa negeri anda. Sahkan sebelum membayar.',
-                    ),
-                    style: const TextStyle(
-                      color: AppTheme.textSecondary,
-                      fontSize: 12,
-                      height: 1.45,
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
         ],
       ),
     );
@@ -221,6 +222,52 @@ class _ZakatScreenState extends State<ZakatScreen> {
     padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 10),
     child: Text(label, style: const TextStyle(fontSize: 12)),
   );
+
+  Widget _stateSelectionCard(LanguageProvider lang) {
+    return AppSurface(
+      padding: const EdgeInsets.all(16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            lang.getText('Select your state', 'Pilih negeri anda'),
+            style: const TextStyle(fontWeight: FontWeight.w700),
+          ),
+          const SizedBox(height: 12),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 12),
+            decoration: BoxDecoration(
+              color: AppTheme.surfaceMuted,
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(color: Colors.grey.withValues(alpha: 0.2)),
+            ),
+            child: DropdownButtonHideUnderline(
+              child: DropdownButton<String>(
+                isExpanded: true,
+                value: _selectedState,
+                hint: Text(
+                  lang.getText('State (Optional for testing)', 'Negeri (Pilihan)'),
+                  style: const TextStyle(color: AppTheme.textSecondary, fontSize: 14),
+                ),
+                items: _stateMethods.keys.map((String state) {
+                  return DropdownMenuItem<String>(
+                    value: state,
+                    child: Text(state, style: const TextStyle(fontSize: 14)),
+                  );
+                }).toList(),
+                onChanged: (newValue) {
+                  setState(() {
+                    _selectedState = newValue;
+                    _calculate();
+                  });
+                },
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
 
   Widget _referenceCard(LanguageProvider lang) {
     return AppSurface(
@@ -259,30 +306,6 @@ class _ZakatScreenState extends State<ZakatScreen> {
             controller: _wornUrufController,
             suffix: 'g',
           ),
-          const SizedBox(height: 2),
-          Text(
-            lang.getText(
-              'Stored gold: 85 g nisab, charged in full • worn gold: charged on the weight above the uruf • rate: 2.5%',
-              'Emas simpan: nisab 85 g, dikenakan sepenuhnya • emas dipakai: dikenakan atas berat melebihi uruf • kadar: 2.5%',
-            ),
-            style: const TextStyle(color: AppTheme.textSecondary, fontSize: 12),
-          ),
-          const SizedBox(height: 8),
-          Align(
-            alignment: Alignment.centerLeft,
-            child: TextButton.icon(
-              onPressed: () => launchUrl(
-                Uri.parse(
-                  'https://www.zakat.com.my/info-zakat/jenis-jenis-zakat/zakat-pendapatan/',
-                ),
-                mode: LaunchMode.externalApplication,
-              ),
-              icon: const Icon(CupertinoIcons.arrow_up_right_square, size: 17),
-              label: Text(
-                lang.getText('Official PPZ guidance', 'Panduan rasmi PPZ'),
-              ),
-            ),
-          ),
         ],
       ),
     );
@@ -314,10 +337,10 @@ class _ZakatScreenState extends State<ZakatScreen> {
           ),
           _moneyField(
             label: lang.getText(
-              'Zakat already paid this year',
-              'Zakat telah dibayar tahun ini',
+              'Caruman Zakat (Setahun)',
+              'Caruman Zakat (Setahun)',
             ),
-            controller: _zakatPaidController,
+            controller: _carumanController,
           ),
         ],
       ),
@@ -384,8 +407,8 @@ class _ZakatScreenState extends State<ZakatScreen> {
           _formHeading(
             lang.getText('Gold holdings', 'Pegangan emas'),
             lang.getText(
-              'Stored and worn gold use different Wilayah Persekutuan thresholds.',
-              'Emas simpan dan dipakai menggunakan ambang Wilayah Persekutuan yang berbeza.',
+              'State fatwa dictates if zakat applies to the full weight or only excess.',
+              'Fatwa negeri menetapkan sama ada zakat dikenakan pada berat penuh atau lebihan sahaja.',
             ),
           ),
           for (var index = 0; index < _goldItems.length; index++) ...[
