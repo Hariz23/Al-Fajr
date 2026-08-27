@@ -15,59 +15,79 @@ class ZakatScreen extends StatefulWidget {
 }
 
 class _ZakatScreenState extends State<ZakatScreen> {
+  // Reference values
   final _nisabController = TextEditingController(text: '33996.00');
   final _goldPriceController = TextEditingController(text: '399.95');
+  final _silverPriceController = TextEditingController(text: '4.50');
   final _wornUrufController = TextEditingController(
     text: ZakatCalculator.wornGoldThresholdGrams.toStringAsFixed(0),
   );
+
+  // Income - base
   final _monthlySalaryController = TextEditingController();
   final _otherAnnualIncomeController = TextEditingController();
-  final _carumanController = TextEditingController(); // Reverted from _zakatPaidController
+  final _zakatDeductedController = TextEditingController();
+
+  // Income - reliefs (detailed method only)
+  final _selfReliefController = TextEditingController();
+  final _spouseReliefController = TextEditingController();
+  final _childReliefController = TextEditingController();
+  final _numberOfSpousesController = TextEditingController(text: '0');
+  final _numberOfChildrenController = TextEditingController(text: '0');
+  final _parentSupportController = TextEditingController();
+  final _educationController = TextEditingController();
+  final _medicalController = TextEditingController();
+  final _tabungHajiController = TextEditingController();
+  final _kwspController = TextEditingController();
+
+  IncomeCalculationMethod _incomeMethod = IncomeCalculationMethod.simple;
 
   final List<_SavingsEntry> _savings = [_SavingsEntry(named: 'Account 1')];
   final List<_GoldEntry> _goldItems = [_GoldEntry()];
+  final List<_SilverEntry> _silverItems = [_SilverEntry()];
 
-  // State Selection Map
   String? _selectedState;
-  final Map<String, WornGoldMethod> _stateMethods = {
-    'Selangor': WornGoldMethod.excess,
-    'Wilayah Persekutuan': WornGoldMethod.excess,
-    'Johor': WornGoldMethod.excess,
-    'Negeri Sembilan': WornGoldMethod.excess,
-    'Melaka': WornGoldMethod.full,
-    'Pulau Pinang': WornGoldMethod.full,
-    'Perak': WornGoldMethod.full,
-    'Perlis': WornGoldMethod.full,
-    'Pahang': WornGoldMethod.full,
-    'Kedah': WornGoldMethod.full,
-    'Terengganu': WornGoldMethod.excess,
-    'Kelantan': WornGoldMethod.excess,
-    'Sabah': WornGoldMethod.excess,
-    'Sarawak': WornGoldMethod.excess,
-  };
 
   int _section = 0;
   double _incomeZakat = 0;
   double _savingsZakat = 0;
   double _goldZakat = 0;
+  double _silverZakat = 0;
 
-  double get _total => _incomeZakat + _savingsZakat + _goldZakat;
+  double get _total => _incomeZakat + _savingsZakat + _goldZakat + _silverZakat;
   double get _nisab => _parse(_nisabController.text);
   double get _goldPrice => _parse(_goldPriceController.text);
+  double get _silverPrice => _parse(_silverPriceController.text);
   double get _wornUruf => _parse(_wornUrufController.text);
+  StateZakatConfig? get _stateConfig =>
+      _selectedState != null ? ZakatCalculator.states[_selectedState] : null;
 
   @override
   void dispose() {
     _nisabController.dispose();
     _goldPriceController.dispose();
+    _silverPriceController.dispose();
     _wornUrufController.dispose();
     _monthlySalaryController.dispose();
     _otherAnnualIncomeController.dispose();
-    _carumanController.dispose();
+    _zakatDeductedController.dispose();
+    _selfReliefController.dispose();
+    _spouseReliefController.dispose();
+    _childReliefController.dispose();
+    _numberOfSpousesController.dispose();
+    _numberOfChildrenController.dispose();
+    _parentSupportController.dispose();
+    _educationController.dispose();
+    _medicalController.dispose();
+    _tabungHajiController.dispose();
+    _kwspController.dispose();
     for (final entry in _savings) {
       entry.dispose();
     }
     for (final entry in _goldItems) {
+      entry.dispose();
+    }
+    for (final entry in _silverItems) {
       entry.dispose();
     }
     super.dispose();
@@ -87,11 +107,31 @@ class _ZakatScreenState extends State<ZakatScreen> {
     return double.tryParse(normalized) ?? 0;
   }
 
+  int _parseInt(String input) => int.tryParse(input.trim()) ?? 0;
+
+  /// Applies the selected state's default reliefs and gold method.
+  /// Only overwrites relief fields that are still empty or match the
+  /// previously-applied defaults, so we don't clobber values the user
+  /// has already typed in.
+  void _applyStateDefaults(StateZakatConfig? previous, StateZakatConfig next) {
+    void maybeReplace(TextEditingController c, double? oldDefault, double newDefault) {
+      final current = _parse(c.text);
+      final isEmpty = c.text.trim().isEmpty;
+      final matchesOldDefault = oldDefault != null && current == oldDefault;
+      if (isEmpty || matchesOldDefault) {
+        c.text = newDefault.toStringAsFixed(0);
+      }
+    }
+
+    maybeReplace(_selfReliefController, previous?.selfRelief, next.selfRelief);
+    maybeReplace(_spouseReliefController, previous?.spouseRelief, next.spouseRelief);
+    maybeReplace(_childReliefController, previous?.childRelief, next.childRelief);
+  }
+
   void _calculate() {
-    // Default to Selangor (excess) logic if dropdown is blank
-    final activeGoldMethod = _selectedState != null 
-        ? _stateMethods[_selectedState]! 
-        : WornGoldMethod.excess;
+    // Default to the excess/Selangor-style worn-gold method if no state
+    // is picked yet, since that's the more common rule nationally.
+    final activeGoldMethod = _stateConfig?.wornGoldMethod ?? WornGoldMethod.excess;
 
     var goldZakat = 0.0;
     for (final item in _goldItems) {
@@ -104,12 +144,31 @@ class _ZakatScreenState extends State<ZakatScreen> {
       );
     }
 
+    var silverZakat = 0.0;
+    for (final item in _silverItems) {
+      silverZakat += ZakatCalculator.silverItem(
+        weightGrams: _parse(item.weightController.text),
+        pricePerGram: _silverPrice,
+      );
+    }
+
     setState(() {
       _incomeZakat = ZakatCalculator.income(
         monthlySalary: _parse(_monthlySalaryController.text),
         otherAnnualIncome: _parse(_otherAnnualIncomeController.text),
-        caruman: _parse(_carumanController.text),
         nisab: _nisab,
+        method: _incomeMethod,
+        zakatAlreadyDeducted: _parse(_zakatDeductedController.text),
+        selfRelief: _parse(_selfReliefController.text),
+        numberOfSpouses: _parseInt(_numberOfSpousesController.text),
+        spouseReliefPerSpouse: _parse(_spouseReliefController.text),
+        numberOfChildren: _parseInt(_numberOfChildrenController.text),
+        childReliefPerChild: _parse(_childReliefController.text),
+        parentSupport: _parse(_parentSupportController.text),
+        education: _parse(_educationController.text),
+        medical: _parse(_medicalController.text),
+        tabungHaji: _parse(_tabungHajiController.text),
+        kwspContribution: _parse(_kwspController.text),
       );
       _savingsZakat = ZakatCalculator.savings(
         lowestAnnualBalances: _savings.map(
@@ -118,6 +177,7 @@ class _ZakatScreenState extends State<ZakatScreen> {
         nisab: _nisab,
       );
       _goldZakat = goldZakat;
+      _silverZakat = silverZakat;
     });
   }
 
@@ -136,14 +196,28 @@ class _ZakatScreenState extends State<ZakatScreen> {
 
     _monthlySalaryController.clear();
     _otherAnnualIncomeController.clear();
-    _carumanController.clear();
+    _zakatDeductedController.clear();
+    _selfReliefController.clear();
+    _spouseReliefController.clear();
+    _childReliefController.clear();
+    _numberOfSpousesController.text = '0';
+    _numberOfChildrenController.text = '0';
+    _parentSupportController.clear();
+    _educationController.clear();
+    _medicalController.clear();
+    _tabungHajiController.clear();
+    _kwspController.clear();
     setState(() {
       _selectedState = null;
+      _incomeMethod = IncomeCalculationMethod.simple;
     });
     for (final entry in _savings.skip(1)) {
       entry.dispose();
     }
     for (final item in _goldItems.skip(1)) {
+      item.dispose();
+    }
+    for (final item in _silverItems.skip(1)) {
       item.dispose();
     }
     _savings
@@ -152,10 +226,14 @@ class _ZakatScreenState extends State<ZakatScreen> {
     _goldItems
       ..removeRange(1, _goldItems.length)
       ..first.weightController.clear();
+    _silverItems
+      ..removeRange(1, _silverItems.length)
+      ..first.weightController.clear();
     setState(() {
       _incomeZakat = 0;
       _savingsZakat = 0;
       _goldZakat = 0;
+      _silverZakat = 0;
     });
   }
 
@@ -181,6 +259,7 @@ class _ZakatScreenState extends State<ZakatScreen> {
             income: _incomeZakat,
             savings: _savingsZakat,
             gold: _goldZakat,
+            silver: _silverZakat,
             lang: lang,
           ),
           const SizedBox(height: 16),
@@ -198,6 +277,7 @@ class _ZakatScreenState extends State<ZakatScreen> {
                 0: _segment(lang.getText('Income', 'Pendapatan')),
                 1: _segment(lang.getText('Savings', 'Simpanan')),
                 2: _segment(lang.getText('Gold', 'Emas')),
+                3: _segment(lang.getText('Silver', 'Perak')),
               },
               onValueChanged: (value) {
                 if (value != null) setState(() => _section = value);
@@ -210,7 +290,8 @@ class _ZakatScreenState extends State<ZakatScreen> {
             child: switch (_section) {
               0 => _incomeForm(lang),
               1 => _savingsForm(lang),
-              _ => _goldForm(lang),
+              2 => _goldForm(lang),
+              _ => _silverForm(lang),
             },
           ),
         ],
@@ -224,6 +305,7 @@ class _ZakatScreenState extends State<ZakatScreen> {
   );
 
   Widget _stateSelectionCard(LanguageProvider lang) {
+    final config = _stateConfig;
     return AppSurface(
       padding: const EdgeInsets.all(16),
       child: Column(
@@ -246,24 +328,37 @@ class _ZakatScreenState extends State<ZakatScreen> {
                 isExpanded: true,
                 value: _selectedState,
                 hint: Text(
-                  lang.getText('State (Optional for testing)', 'Negeri (Pilihan)'),
+                  lang.getText('State (optional)', 'Negeri (pilihan)'),
                   style: const TextStyle(color: AppTheme.textSecondary, fontSize: 14),
                 ),
-                items: _stateMethods.keys.map((String state) {
+                items: ZakatCalculator.states.keys.map((String state) {
                   return DropdownMenuItem<String>(
                     value: state,
                     child: Text(state, style: const TextStyle(fontSize: 14)),
                   );
                 }).toList(),
                 onChanged: (newValue) {
+                  if (newValue == null) return;
+                  final previous = _stateConfig;
                   setState(() {
                     _selectedState = newValue;
-                    _calculate();
+                    _applyStateDefaults(previous, ZakatCalculator.states[newValue]!);
                   });
+                  _calculate();
                 },
               ),
             ),
           ),
+          if (config != null) ...[
+            const SizedBox(height: 10),
+            Text(
+              lang.getText(
+                'Reliefs and the worn-gold rule below are defaults for ${config.authority} — confirm current figures on their site before paying.',
+                'Pelepasan dan kaedah emas dipakai di bawah adalah lalai bagi ${config.authority} — sahkan angka semasa di laman mereka sebelum membayar.',
+              ),
+              style: const TextStyle(color: AppTheme.textSecondary, fontSize: 11, height: 1.4),
+            ),
+          ],
         ],
       ),
     );
@@ -301,6 +396,10 @@ class _ZakatScreenState extends State<ZakatScreen> {
             label: lang.getText('Gold price per gram', 'Harga emas per gram'),
             controller: _goldPriceController,
           ),
+          _moneyField(
+            label: lang.getText('Silver price per gram', 'Harga perak per gram'),
+            controller: _silverPriceController,
+          ),
           _numberField(
             label: lang.getText('Worn gold uruf', 'Uruf emas dipakai'),
             controller: _wornUrufController,
@@ -312,6 +411,7 @@ class _ZakatScreenState extends State<ZakatScreen> {
   }
 
   Widget _incomeForm(LanguageProvider lang) {
+    final isDetailed = _incomeMethod == IncomeCalculationMethod.detailed;
     return AppSurface(
       key: const ValueKey('income'),
       child: Column(
@@ -320,8 +420,45 @@ class _ZakatScreenState extends State<ZakatScreen> {
           _formHeading(
             lang.getText('Annual income', 'Pendapatan tahunan'),
             lang.getText(
-              'Gross yearly income is assessed at 2.5% once it reaches the selected nisab.',
-              'Pendapatan kasar tahunan ditaksir pada 2.5% apabila mencapai nisab yang dipilih.',
+              'Gross yearly income is assessed at 2.5% once it clears the nisab.',
+              'Pendapatan kasar tahunan ditaksir pada 2.5% apabila mencapai nisab.',
+            ),
+          ),
+          SizedBox(
+            width: double.infinity,
+            child: CupertinoSlidingSegmentedControl<IncomeCalculationMethod>(
+              groupValue: _incomeMethod,
+              children: {
+                IncomeCalculationMethod.simple: Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 8),
+                  child: Text(lang.getText('Simple', 'Ringkas')),
+                ),
+                IncomeCalculationMethod.detailed: Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 8),
+                  child: Text(lang.getText('With reliefs', 'Dengan pelepasan')),
+                ),
+              },
+              onValueChanged: (value) {
+                if (value == null) return;
+                setState(() => _incomeMethod = value);
+                _calculate();
+              },
+            ),
+          ),
+          const SizedBox(height: 4),
+          Padding(
+            padding: const EdgeInsets.only(bottom: 16, top: 8),
+            child: Text(
+              isDetailed
+                  ? lang.getText(
+                      'Deducts self/spouse/child reliefs and other allowable expenses before applying 2.5%, similar to MAIJ\'s calculator.',
+                      'Menolak pelepasan diri/isteri/anak dan perbelanjaan dibenarkan lain sebelum mengenakan 2.5%, seperti kalkulator MAIJ.',
+                    )
+                  : lang.getText(
+                      'No reliefs — just gross income x 2.5%, minus any zakat already deducted at source.',
+                      'Tiada pelepasan — hanya pendapatan kasar x 2.5%, ditolak zakat yang telah dipotong di sumber.',
+                    ),
+              style: const TextStyle(color: AppTheme.textSecondary, fontSize: 12, height: 1.4),
             ),
           ),
           _moneyField(
@@ -337,11 +474,79 @@ class _ZakatScreenState extends State<ZakatScreen> {
           ),
           _moneyField(
             label: lang.getText(
-              'Caruman Zakat (Setahun)',
-              'Caruman Zakat (Setahun)',
+              'Zakat already deducted (payroll)',
+              'Zakat telah dipotong (gaji)',
             ),
-            controller: _carumanController,
+            controller: _zakatDeductedController,
           ),
+          if (isDetailed) ...[
+            const Divider(height: 28),
+            Text(
+              lang.getText('Reliefs (pelepasan)', 'Pelepasan'),
+              style: const TextStyle(fontWeight: FontWeight.w700),
+            ),
+            const SizedBox(height: 12),
+            _moneyField(
+              label: lang.getText('Self relief', 'Pelepasan diri'),
+              controller: _selfReliefController,
+            ),
+            Row(
+              children: [
+                Expanded(
+                  child: _numberField(
+                    label: lang.getText('No. of spouses', 'Bil. isteri'),
+                    controller: _numberOfSpousesController,
+                    suffix: '',
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: _moneyField(
+                    label: lang.getText('Relief per spouse', 'Pelepasan seorang isteri'),
+                    controller: _spouseReliefController,
+                  ),
+                ),
+              ],
+            ),
+            Row(
+              children: [
+                Expanded(
+                  child: _numberField(
+                    label: lang.getText('No. of children', 'Bil. anak'),
+                    controller: _numberOfChildrenController,
+                    suffix: '',
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: _moneyField(
+                    label: lang.getText('Relief per child', 'Pelepasan seorang anak'),
+                    controller: _childReliefController,
+                  ),
+                ),
+              ],
+            ),
+            _moneyField(
+              label: lang.getText('Parent support', 'Nafkah ibu bapa'),
+              controller: _parentSupportController,
+            ),
+            _moneyField(
+              label: lang.getText('Education expenses', 'Perbelanjaan pendidikan'),
+              controller: _educationController,
+            ),
+            _moneyField(
+              label: lang.getText('Medical expenses', 'Perbelanjaan perubatan'),
+              controller: _medicalController,
+            ),
+            _moneyField(
+              label: lang.getText('Tabung Haji savings', 'Simpanan Tabung Haji'),
+              controller: _tabungHajiController,
+            ),
+            _moneyField(
+              label: lang.getText('KWSP/EPF contribution', 'Caruman KWSP'),
+              controller: _kwspController,
+            ),
+          ],
         ],
       ),
     );
@@ -460,6 +665,46 @@ class _ZakatScreenState extends State<ZakatScreen> {
     );
   }
 
+  Widget _silverForm(LanguageProvider lang) {
+    return AppSurface(
+      key: const ValueKey('silver'),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          _formHeading(
+            lang.getText('Silver holdings', 'Pegangan perak'),
+            lang.getText(
+              'Zakat applies once total silver reaches 595g, on the full weight.',
+              'Zakat dikenakan apabila jumlah perak mencapai 595g, ke atas berat penuh.',
+            ),
+          ),
+          for (var index = 0; index < _silverItems.length; index++) ...[
+            _entryHeader(
+              lang.getText('Silver item ${index + 1}', 'Item perak ${index + 1}'),
+              canDelete: _silverItems.length > 1,
+              onDelete: () {
+                _silverItems.removeAt(index).dispose();
+                _calculate();
+              },
+            ),
+            _numberField(
+              label: lang.getText('Weight', 'Berat'),
+              controller: _silverItems[index].weightController,
+              suffix: 'g',
+            ),
+            if (index != _silverItems.length - 1) const Divider(height: 28),
+          ],
+          const SizedBox(height: 4),
+          OutlinedButton.icon(
+            onPressed: () => setState(() => _silverItems.add(_SilverEntry())),
+            icon: const Icon(CupertinoIcons.add, size: 18),
+            label: Text(lang.getText('Add silver item', 'Tambah item perak')),
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _formHeading(String title, String description) => Padding(
     padding: const EdgeInsets.only(bottom: 18),
     child: Column(
@@ -530,11 +775,14 @@ class _ZakatScreenState extends State<ZakatScreen> {
     required String label,
     required TextEditingController controller,
     required String suffix,
-  }) => TextField(
-    controller: controller,
-    keyboardType: const TextInputType.numberWithOptions(decimal: true),
-    onChanged: (_) => _calculate(),
-    decoration: InputDecoration(labelText: label, suffixText: suffix),
+  }) => Padding(
+    padding: const EdgeInsets.only(bottom: 12),
+    child: TextField(
+      controller: controller,
+      keyboardType: const TextInputType.numberWithOptions(decimal: true),
+      onChanged: (_) => _calculate(),
+      decoration: InputDecoration(labelText: label, suffixText: suffix),
+    ),
   );
 }
 
@@ -544,6 +792,7 @@ class _TotalCard extends StatelessWidget {
     required this.income,
     required this.savings,
     required this.gold,
+    required this.silver,
     required this.lang,
   });
 
@@ -551,6 +800,7 @@ class _TotalCard extends StatelessWidget {
   final double income;
   final double savings;
   final double gold;
+  final double silver;
   final LanguageProvider lang;
 
   @override
@@ -587,6 +837,7 @@ class _TotalCard extends StatelessWidget {
               _breakdown(lang.getText('Income', 'Pendapatan'), income),
               _breakdown(lang.getText('Savings', 'Simpanan'), savings),
               _breakdown(lang.getText('Gold', 'Emas'), gold),
+              _breakdown(lang.getText('Silver', 'Perak'), silver),
             ],
           ),
         ],
@@ -638,6 +889,12 @@ class _SavingsEntry {
 class _GoldEntry {
   final TextEditingController weightController = TextEditingController();
   bool isWorn = false;
+
+  void dispose() => weightController.dispose();
+}
+
+class _SilverEntry {
+  final TextEditingController weightController = TextEditingController();
 
   void dispose() => weightController.dispose();
 }
