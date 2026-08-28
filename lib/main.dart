@@ -11,6 +11,9 @@ import 'notification_service.dart';
 import 'prayer_times_repository.dart';
 import 'splash_screen.dart';
 import 'theme.dart';
+import 'theme_provider.dart';
+
+
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -24,22 +27,29 @@ void main() async {
       providers: [
         ChangeNotifierProvider(create: (_) => LanguageProvider()),
         ChangeNotifierProvider(create: (_) => AdminProfileProvider()),
+        ChangeNotifierProvider(create: (_) => ThemeProvider()),
       ],
       child: const MyApp(),
     ),
   );
 }
 
+
+
 class MyApp extends StatelessWidget {
   const MyApp({super.key});
 
   @override
   Widget build(BuildContext context) {
+    //final themeP = context.watch<ThemeProvider>();
     return MaterialApp(
       title: 'Al Fajr',
       debugShowCheckedModeBanner: false,
       theme: AppTheme.lightTheme,
-      themeMode: ThemeMode.light,
+      //darkTheme: AppTheme.darkTheme,           // ← add this
+      themeMode: ThemeMode.light,               // ← replace ThemeMode.light
+          //? ThemeMode.dark
+          //: ThemeMode.light,
       home: const VideoSplashScreen(nextScreen: AuthWrapper()),
     );
   }
